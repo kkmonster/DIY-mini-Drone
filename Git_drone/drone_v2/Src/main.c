@@ -65,11 +65,11 @@ const double dt = 0.004				;			// 250 hz sample rate!
 
 #define motor_limmit		100
 
-double Kp_yaw		=0;
-double Ki_yaw		=0;
-double Kd_yaw		=0;
+double Kp_yaw		=2.2;
+double Ki_yaw		=0.5;
+double Kd_yaw		=0.75;
 
-double Kp_pitch	 =3.6;
+double Kp_pitch	 =2.2;
 double Ki_pitch  =0.5;
 double Kd_pitch  =0.75;
 
@@ -429,7 +429,6 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 void Initial_MPU6050(void)
 	{
 
@@ -450,7 +449,7 @@ void Initial_MPU6050(void)
 			
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 				
-			HAL_Delay(50); 
+			HAL_Delay(50); // for stability
 }
 
 void MPU6050_WriteBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t data)
@@ -553,8 +552,8 @@ volatile void PID_controller(void)
 	
 	
 	Error_yaw 	= yaw_center -yaw	;
-	Errer_pitch = (ch2/20)	-pitch	;
-	Error_roll 	= (ch1/20)	-roll	;
+	Errer_pitch = (ch2/30)	-pitch	;
+	Error_roll 	= (ch1/30)	-roll	;
 	
 	Sum_Error_yaw 	+= Error_yaw*dt ;
 	Sum_Error_pitch += Errer_pitch*dt ;
@@ -576,9 +575,7 @@ volatile void PID_controller(void)
 	Buf_D_Errer_pitch=Errer_pitch;
 	Buf_D_Error_roll=Error_roll; 
 	
-	
-	
-	
+
 	
 	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Ki_yaw		* Sum_Error_yaw)   + (Kd_yaw * D_Error_yaw) ;
 	Del_pitch	= (Kp_pitch * Errer_pitch)	+ (Ki_pitch	* Sum_Error_pitch) + (Kd_pitch * D_Error_pitch) ;
@@ -594,10 +591,17 @@ volatile void PID_controller(void)
 	if(motor_B < 1) motor_B = 0 ;
 	if(motor_C < 1) motor_C = 0 ;
 	if(motor_D < 1) motor_D = 0 ;
+	
+	if(motor_A > 2399) motor_A = 2399 ;
+	if(motor_B > 2399) motor_B = 2399 ;
+	if(motor_C > 2399) motor_C = 2399 ;
+	if(motor_D > 2399) motor_D = 2399 ;
+	
 }
 
 volatile void Drive_motor_output(void)
 {
+
 	TIM3 ->CCR1 = motor_D ;
 	TIM3 ->CCR2 = motor_A ;
 	TIM3 ->CCR4 = motor_C ;
@@ -658,9 +662,9 @@ volatile void Interrupt_call(void)
 //			 Ki_roll  	=ch7/prescal;
 //			 Kd_roll  	=ch8/prescal;
 		
-			 Kp_yaw		=ch6/prescal;
-			 Ki_yaw		=ch7/prescal;
-			 Kd_yaw		=ch8/prescal;
+//			 Kp_yaw		=ch6/prescal;
+//			 Ki_yaw		=ch7/prescal;
+//			 Kd_yaw		=ch8/prescal;
 	 
 //	  /* Sent & eceive data from Bluetooth serial */
 //		HAL_UART_Transmit(&huart1,(uint8_t*)&h_uart,1,1);
@@ -678,6 +682,7 @@ volatile void Interrupt_call(void)
 
 }
 volatile void Read_SPPM(void){
+	
 	Ch_count++;
 	tmp_Ch = TIM16->CNT ;
 	TIM16->CNT = 0 ;
