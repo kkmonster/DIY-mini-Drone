@@ -59,8 +59,9 @@ UART_HandleTypeDef huart1;
 #define ACCELEROMETER_SENSITIVITY   16384   
 #define GYROSCOPE_SENSITIVITY       131.07  
 #define M_PI                        3.14159265359	    
-#define sampleFreq                  200 			    // 200 hz sample rate!   
+#define sampleFreq                  250 			    // 250 hz sample rate!   
 #define limmit_I                    300
+#define battary_low_level           2961                // 1v = ~846   @ 3.5 v = 2961
 float Kp_yaw    =2.2;
 float Ki_yaw    =0.5;
 float Kd_yaw    =0.75;
@@ -84,17 +85,20 @@ float Sum_Error_yaw=0, Sum_Error_pitch=0, Sum_Error_roll=0;             // Sum o
 float D_Error_yaw=0, D_Error_pitch=0, D_Error_roll=0; 					// error dot
 float Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for rotate axis
 
+uint16_t battery_voltage ;
+float T_center_minus = 0;
 /* USER CODE for SPPM Receiver  */
 
-uint16_t Channel[10]={0} ;
-uint16_t tmp_Ch =0 ;
-int16_t ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8,ch9 ;
-int8_t Ch_count = 0 ;
-uint8_t  buf_uart[10]={0};	     // buffer uart
-int16_t  AccelGyro[6]={0};       // RAW states value
-int16_t motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value 
-int8_t bt_Ref_yaw_L=0, bt_Ref_pitch_L=0, bt_Ref_roll_L=0 ,bt_T_center_L = 0;	// data from bluetooth
-int8_t enable=0,buf_enable=0 ;																																// enable
+uint16_t    tmp_Ch =0 ;
+uint16_t    Channel[10]={0} ;
+int16_t     ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8,ch9 ;
+int8_t      Ch_count = 0 ;
+uint8_t     buf_uart[10]={0};	     // buffer uart
+int16_t     AccelGyro[6]={0};       // RAW states value
+int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value 
+
+//int8_t bt_Ref_yaw_L=0, bt_Ref_pitch_L=0, bt_Ref_roll_L=0 ,bt_T_center_L = 0;	// data from bluetooth
+																															// enable
 
 
 /* USER CODE END PV */
@@ -118,14 +122,13 @@ void MPU6050_WriteBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_
 void MPU6050_ReadBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t *data);
 void MPU6050_ReadBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_t *data);
 void MPU6050_GetRawAccelGyro(int16_t* AccelGyro);
-void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw);
 volatile void Controller(void);
-volatile void Read_Angle(void);
 volatile void PID_controller(void);
 volatile void Drive_motor_output(void);
-volatile void Read_serial(void);
 volatile void Interrupt_call(void);
 volatile void ahrs(void);
+//void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw);
+//volatile void Read_Angle(void);
 
 /* USER CODE END PFP */
 
@@ -513,37 +516,6 @@ void MPU6050_GetRawAccelGyro(int16_t* AccelGyro)
 
 }
 
-//volatile void Read_Angle(void)
-//{
-
-//	ComplementaryFilter( AccelGyro, &pitch, &roll, &yaw);
-//}
-
-//void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw)
-//{
-//    float pitchAcc, rollAcc;               
-// 
-//    // Integrate the gyroscope data -> int(angularSpeed) = angle
-//    *pitch -= (AccelGyro[3] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the X-axis
-//    *roll  -= (AccelGyro[4] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Y-axis
-//	  *yaw   += (AccelGyro[5] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Z-axis
-
-//    // Compensate for drift with accelerometer data if !bullshit
-//    // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
-//    int16_t forceMagnitudeApprox = abs(AccelGyro[0]) + abs(AccelGyro[1]) + abs(AccelGyro[2]);
-//    if (((forceMagnitudeApprox > 8192) && (forceMagnitudeApprox < 32768)))
-//    {
-//	// Turning around the X axis results in a vector on the Y-axis
-//        pitchAcc = atan2((float)AccelGyro[1], (float)AccelGyro[2]) * 180 / M_PI;
-//        *pitch = *pitch * 0.96 - pitchAcc * 0.04 ;
-// 
-//	// Turning around the Y axis results in a vector on the X-axis
-//        rollAcc = atan2((float)AccelGyro[0], (float)AccelGyro[2]) * 180 / M_PI;
-//        *roll = *roll * 0.96 + rollAcc * 0.04 ;
-//    }
-//} 
-
-
 volatile void PID_controller(void)
 {
 
@@ -551,7 +523,7 @@ volatile void PID_controller(void)
 	float Buf_D_Errer_pitch=Errer_pitch;
 	float Buf_D_Error_roll=Error_roll; 
     
-	T_center    = ch3*3  ;
+	T_center    = ch3*3 - T_center_minus  ;
 	yaw_center +=(ch4/5)/sampleFreq     ;
 
 	Error_yaw 	= yaw_center - q_yaw	;
@@ -651,18 +623,24 @@ volatile void Interrupt_call(void)
 		ch8=Channel[8]- 1110 ;
 		ch9=Channel[9]- 1110 ;
 
+        
+        
+        
 //	  /* Sent & eceive data from Bluetooth serial */
-
 //		HAL_UART_Receive_IT(&huart1,buf_uart,10);
-		
-
+        
+    // read battery voltage
+    
+	battery_voltage = HAL_ADC_GetValue(&hadc);
+    T_center_minus -= 0.5 ; 
+    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
+    HAL_ADC_Start(&hadc);
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
 }
 volatile void Read_SPPM(void)
 {
-	
 	Ch_count++;
 	tmp_Ch = TIM16->CNT ;
 	TIM16->CNT = 0 ;
@@ -750,6 +728,37 @@ volatile void ahrs(void)
             q_yaw   += gz/sampleFreq * 180 / M_PI ;
 }
 
+
+
+//volatile void Read_Angle(void)
+//{
+
+//	ComplementaryFilter( AccelGyro, &pitch, &roll, &yaw);
+//}
+
+//void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw)
+//{
+//    float pitchAcc, rollAcc;               
+// 
+//    // Integrate the gyroscope data -> int(angularSpeed) = angle
+//    *pitch -= (AccelGyro[3] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the X-axis
+//    *roll  -= (AccelGyro[4] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Y-axis
+//	  *yaw   += (AccelGyro[5] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Z-axis
+
+//    // Compensate for drift with accelerometer data if !bullshit
+//    // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
+//    int16_t forceMagnitudeApprox = abs(AccelGyro[0]) + abs(AccelGyro[1]) + abs(AccelGyro[2]);
+//    if (((forceMagnitudeApprox > 8192) && (forceMagnitudeApprox < 32768)))
+//    {
+//	// Turning around the X axis results in a vector on the Y-axis
+//        pitchAcc = atan2((float)AccelGyro[1], (float)AccelGyro[2]) * 180 / M_PI;
+//        *pitch = *pitch * 0.96 - pitchAcc * 0.04 ;
+// 
+//	// Turning around the Y axis results in a vector on the X-axis
+//        rollAcc = atan2((float)AccelGyro[0], (float)AccelGyro[2]) * 180 / M_PI;
+//        *roll = *roll * 0.96 + rollAcc * 0.04 ;
+//    }
+//} 
 /* USER CODE END 4 */
 
 #ifdef USE_FULL_ASSERT
