@@ -53,16 +53,18 @@ int8_t iqs_count= 0 ;
 void EXTI4_15_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI4_15_IRQn 0 */
-	iqs_count++;
-	if(iqs_count > 2){
-		iqs_count=0 ;
-		Interrupt_call();
-	}
+
   /* USER CODE END EXTI4_15_IRQn 0 */
   HAL_NVIC_ClearPendingIRQ(EXTI4_15_IRQn);
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_5);
   /* USER CODE BEGIN EXTI4_15_IRQn 1 */
-
+	iqs_count++;
+	
+	if(iqs_count > 2){
+		iqs_count=0 		;
+		Interrupt_call()	;
+	}
+	
   /* USER CODE END EXTI4_15_IRQn 1 */
 }
 

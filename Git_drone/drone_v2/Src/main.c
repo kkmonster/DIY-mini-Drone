@@ -57,34 +57,39 @@ UART_HandleTypeDef huart1;
 
 #define header_uart 0x7E
 
-const double ACCELEROMETER_SENSITIVITY =8192.0;
-const double GYROSCOPE_SENSITIVITY =65.536;
-const double M_PI =3.14159265359	;    
-const double dt = 0.004				;			// 250 hz sample rate!   
+const float ACCELEROMETER_SENSITIVITY =16384   ;
+const float GYROSCOPE_SENSITIVITY     =131.07  ;
+const float M_PI =3.14159265359	;    
+const float sampleFreq = 200 ;			// 200 hz sample rate!   
+
+float Kp_yaw    =2.2;
+float Ki_yaw    =0.5;
+float Kd_yaw    =0.75;
+
+float Kp_pitch	=2.2;
+float Ki_pitch  =0.5;
+float Kd_pitch  =0.75;
+
+float Kp_roll	=2.2;
+float Ki_roll  	=0.5;
+float Kd_roll  	=0.75;
+
+float prescal=50 ;
 
 
-#define motor_limmit		100
-
-double Kp_yaw		=2.2;
-double Ki_yaw		=0.5;
-double Kd_yaw		=0.75;
-
-double Kp_pitch	 =2.2;
-double Ki_pitch  =0.5;
-double Kd_pitch  =0.75;
-
-double Kp_roll		=2.2;
-double Ki_roll  	=0.5;
-double Kd_roll  	=0.75;
-
-double prescal=50 ;
+float q_yaw, q_pitch, q_roll;
+float q1=1, q2=0, q3=0, q4=0 ;
+float beta = 0.1;
+float gx_diff = 0, gy_diff=0, gz_diff=0;
+float start_pitch=0, start_roll=0;
+float err_q_yaw, err_q_pitch, err_q_roll;
 
 /* START USER CODE for SPPM Receiver  */
 
 uint16_t Channel[10]={0,0,0,0,0,0,0,0,0,0} ;
-int8_t Ch_count = 0 ;
 uint16_t tmp_Ch =0 ;
 int16_t ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8,ch9 ;
+int8_t Ch_count = 0 ;
 
 /* END USER CODE for SPPM Receiver  */
 
@@ -103,21 +108,21 @@ int16_t motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;							// Motors output valu
 
 int16_t Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ,T_centers= 0;	
 
-int8_t Ref_yaw_H=0, Ref_pitch_H=0, Ref_roll_H=0 ,T_center_H = 0;											// referent input
+int8_t Ref_yaw_H=0, Ref_pitch_H=0, Ref_roll_H=0 ,T_center_H = 0;				// referent input
 int8_t Ref_yaw_L=0, Ref_pitch_L=0, Ref_roll_L=0 ,T_center_L = 0;	
 int8_t enable=0,buf_enable=0 ;																																// enable
 
 float T_center =0, yaw_center=0;
 
-double Error_yaw=0, Errer_pitch=0, Error_roll=0; 												//States Error
+float Error_yaw=0, Errer_pitch=0, Error_roll=0; 						//States Error
 
-double Sum_Error_yaw=0, Sum_Error_pitch=0, Sum_Error_roll=0;             // Sum of error
+float Sum_Error_yaw=0, Sum_Error_pitch=0, Sum_Error_roll=0;             // Sum of error
 
-double D_Error_yaw=0, D_Error_pitch=0, D_Error_roll=0; 									// Diff of error
-double Buf_D_Error_yaw=0, Buf_D_Errer_pitch=0, Buf_D_Error_roll=0; 
+float D_Error_yaw=0, D_Error_pitch=0, D_Error_roll=0; 					// error dot
+float Buf_D_Error_yaw=0, Buf_D_Errer_pitch=0, Buf_D_Error_roll=0; 
 
 
-double Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for rotate axis
+float Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for rotate axis
 
 /* USER CODE END PV */
 
@@ -147,7 +152,7 @@ volatile void PID_controller(void);
 volatile void Drive_motor_output(void);
 volatile void Read_serial(void);
 volatile void Interrupt_call(void);
-
+volatile void ahrs(void);
 
 /* USER CODE END PFP */
 
@@ -190,17 +195,39 @@ int main(void)
 
 	Initial_MPU6050();
 	
-  HAL_TIM_Base_Start(&htim16);
+    HAL_TIM_Base_Start(&htim16);
 	
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
 	HAL_TIM_PWM_Start(&htim14,TIM_CHANNEL_1);
 	
+	HAL_Delay(1000);
 	
-	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
-	HAL_Delay(300);
-	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);
+	uint8_t xxx = 30;
+	while (xxx > 0){
+		MPU6050_GetRawAccelGyro(AccelGyro);
+
+		gx_diff += AccelGyro[3];
+		gy_diff += AccelGyro[4];
+		gz_diff += AccelGyro[5];
+
+        xxx--;
+		HAL_Delay(50);
+	}
+		gx_diff /= 30;
+		gy_diff /= 30;
+		gz_diff /= 30;
+	
+	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt form imu
+	
+    HAL_Delay(300);
+    
+    start_pitch = pitch ; 
+    start_roll  = roll  ;
+    
+	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn); // interrupy form sppm
 
   /* Infinite loop */
   while (1)
@@ -445,7 +472,7 @@ void Initial_MPU6050(void)
 			 //    SetSleepModeStatus(DISABLE)
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 			//			SetDLPF(MPU6050_DLPF_BW_5)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_10);
+			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_98);
 			
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 				
@@ -515,7 +542,7 @@ void MPU6050_GetRawAccelGyro(int16_t* AccelGyro)
 
 volatile void Read_Angle(void)
 {
-	MPU6050_GetRawAccelGyro(AccelGyro);
+
 	ComplementaryFilter( AccelGyro, &pitch, &roll, &yaw);
 }
 
@@ -524,14 +551,14 @@ void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float 
     float pitchAcc, rollAcc;               
  
     // Integrate the gyroscope data -> int(angularSpeed) = angle
-    *pitch -= ((float)AccelGyro[3] / GYROSCOPE_SENSITIVITY) * dt; 	// Angle around the X-axis
-    *roll  -= ((float)AccelGyro[4] / GYROSCOPE_SENSITIVITY) * dt;   // Angle around the Y-axis
-		*yaw   +=	((float)AccelGyro[5] / GYROSCOPE_SENSITIVITY) * dt;   // Angle around the Z-axis
+    *pitch -= (AccelGyro[3] / GYROSCOPE_SENSITIVITY)/sampleFreq ; 	// Angle around the X-axis
+    *roll  -= (AccelGyro[4] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Y-axis
+	*yaw   += (AccelGyro[5] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Z-axis
 
     // Compensate for drift with accelerometer data if !bullshit
     // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
     int16_t forceMagnitudeApprox = abs(AccelGyro[0]) + abs(AccelGyro[1]) + abs(AccelGyro[2]);
-    if (forceMagnitudeApprox > 8192 && forceMagnitudeApprox < 32768)
+    if (((forceMagnitudeApprox > 8192) && (forceMagnitudeApprox < 32768)))
     {
 	// Turning around the X axis results in a vector on the Y-axis
         pitchAcc = atan2((float)AccelGyro[1], (float)AccelGyro[2]) * 180 / M_PI;
@@ -547,17 +574,16 @@ void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float 
 volatile void PID_controller(void)
 {
 
-	T_center   = ch3*3  ;
-	yaw_center +=(ch4/5)*dt     ;
-	
-	
+	T_center    = ch3*3  ;
+	yaw_center +=(ch4/5)/sampleFreq     ;
+
 	Error_yaw 	= yaw_center -yaw	;
-	Errer_pitch = (ch2/30)	-pitch	;
-	Error_roll 	= (ch1/30)	-roll	;
+	Errer_pitch = start_pitch + (ch2/30)-pitch	;
+	Error_roll 	= start_roll  + (ch1/30)-roll	;
 	
-	Sum_Error_yaw 	+= Error_yaw*dt ;
-	Sum_Error_pitch += Errer_pitch*dt ;
-	Sum_Error_roll 	+= Error_roll*dt ;
+	Sum_Error_yaw 	+= Error_yaw   /sampleFreq ;
+	Sum_Error_pitch += Errer_pitch /sampleFreq ;
+	Sum_Error_roll 	+= Error_roll  /sampleFreq ;
 	
 	if(Sum_Error_yaw>50)Sum_Error_yaw =50;
 	if(Sum_Error_yaw<-50)Sum_Error_yaw =-50;
@@ -566,20 +592,17 @@ volatile void PID_controller(void)
 	if(Sum_Error_roll>50)Sum_Error_roll =50;
 	if(Sum_Error_roll<-50)Sum_Error_roll =-50;
 	
-	D_Error_yaw =  (Error_yaw-Buf_D_Error_yaw)/dt ;
-	D_Error_pitch =(Errer_pitch-Buf_D_Errer_pitch)/dt ;
-	D_Error_roll = (Error_roll-Buf_D_Error_roll)/dt ;
-	
-	
+	D_Error_yaw =  (Error_yaw-Buf_D_Error_yaw)    *sampleFreq ;
+	D_Error_pitch =(Errer_pitch-Buf_D_Errer_pitch)*sampleFreq ;
+	D_Error_roll = (Error_roll-Buf_D_Error_roll)  *sampleFreq ;
+
 	Buf_D_Error_yaw =Error_yaw;
 	Buf_D_Errer_pitch=Errer_pitch;
 	Buf_D_Error_roll=Error_roll; 
-	
 
-	
 	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Ki_yaw		* Sum_Error_yaw)   + (Kd_yaw * D_Error_yaw) ;
-	Del_pitch	= (Kp_pitch * Errer_pitch)	+ (Ki_pitch	* Sum_Error_pitch) + (Kd_pitch * D_Error_pitch) ;
-	Del_roll	= (Kp_roll  * Error_roll)		+ (Ki_roll	* Sum_Error_roll)  + (Kd_roll * D_Error_roll) ;
+	Del_pitch	= (Kp_pitch * Errer_pitch)	    + (Ki_pitch	* Sum_Error_pitch)     + (Kd_pitch * D_Error_pitch) ;
+	Del_roll	= (Kp_roll  * Error_roll)		+ (Ki_roll	* Sum_Error_roll)      + (Kd_roll * D_Error_roll) ;
 
 	motor_A=	T_center +Del_pitch	-Del_roll -Del_yaw ;
 	motor_B=	T_center +Del_pitch	+Del_roll +Del_yaw ;
@@ -613,7 +636,19 @@ volatile void Interrupt_call(void)
 		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
 	
 		/* Read data from sensor */
-	  Read_Angle();
+		MPU6050_GetRawAccelGyro(AccelGyro);
+	
+//		Read_Angle();
+		ahrs();
+    pitch =q_pitch;
+    roll  =q_roll;
+    yaw   =q_yaw;
+//	err_q_pitch = q_pitch - pitch;
+//	err_q_roll  = q_roll - roll ; 
+//	err_q_yaw  = q_yaw - yaw ;
+	
+	
+	
 	
 		/* Controller */
 		 PID_controller();
@@ -630,12 +665,12 @@ volatile void Interrupt_call(void)
 			motor_D=0;
 			T_center=0;
 			yaw_center=0;
-			yaw =0 ;
+			//yaw =0 ;
 			Drive_motor_output();
 		}
 		
 		
-	  ch1=Channel[1]- 1510 ;
+	    ch1=Channel[1]- 1510 ;
 		ch2=Channel[2]- 1510 ;
 		ch3=Channel[3]- 1110 ;
 		ch4=Channel[4]- 1510 ;
@@ -671,17 +706,12 @@ volatile void Interrupt_call(void)
 //		HAL_UART_Receive_IT(&huart1,buf_uart,10);
 		
 
-
-	 
-
-
-	
-	
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
 }
-volatile void Read_SPPM(void){
+volatile void Read_SPPM(void)
+{
 	
 	Ch_count++;
 	tmp_Ch = TIM16->CNT ;
@@ -690,7 +720,82 @@ volatile void Read_SPPM(void){
 	Channel[Ch_count] = tmp_Ch ;
 
 }
+volatile void ahrs(void)
+{
+	// quaternion base process 
+	float Norm;
+	
+	float ax = AccelGyro[0];
+	float ay = AccelGyro[1];
+	float az = AccelGyro[2];
+	float gx =((AccelGyro[3]-gx_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/180 ;
+	float gy =((AccelGyro[4]-gy_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/180 ;
+	float gz =((AccelGyro[5]-gz_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/180 ;
+	
+	float q1_dot = 0.5 * (-q2 * gx - q3 * gy - q4 * gz);
+	float q2_dot = 0.5 * ( q1 * gx + q3 * gz - q4 * gy);
+	float q3_dot = 0.5 * ( q1 * gy - q2 * gz + q4 * gx);
+	float q4_dot = 0.5 * ( q1 * gz + q2 * gy - q3 * gx);
 
+	if(!((ax == 0.0f) && (ay == 0.0f) && (az == 0.0f))) {
+		// Normalise 
+		Norm = sqrt(ax * ax + ay * ay + az * az);
+		ax /= Norm;
+		ay /= Norm;
+		az /= Norm;   
+
+		float _2q1 = 2.0f * q1;
+		float _2q2 = 2.0f * q2;
+		float _2q3 = 2.0f * q3;
+		float _2q4 = 2.0f * q4;
+		float _4q1 = 4.0f * q1;
+		float _4q2 = 4.0f * q2;
+		float _4q3 = 4.0f * q3;
+		float _8q2 = 8.0f * q2;
+		float _8q3 = 8.0f * q3;
+		float q1q1 = q1 * q1;
+		float q2q2 = q2 * q2;
+		float q3q3 = q3 * q3;
+		float q4q4 = q4 * q4;
+		// Gradient decent algorithm corrective step
+		float s1 = _4q1 * q3q3 + _2q4 * ax + _4q1 * q2q2 - _2q2 * ay;
+		float s2 = _4q2 * q4q4 - _2q4 * ax + 4.0 * q1q1 * q2 - _2q1 * ay - _4q2 + _8q2 * q2q2 + _8q2 * q3q3 + _4q2 * az;
+		float s3 = 4.0 * q1q1 * q3 + _2q1 * ax + _4q3 * q4q4 - _2q4 * ay - _4q3 + _8q3 * q2q2 + _8q3 * q3q3 + _4q3 * az;
+		float s4 = 4.0 * q2q2 * q4 - _2q2 * ax + 4.0 * q3q3 * q4 - _2q3 * ay;
+		// Normalise 
+		Norm = sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
+		s1 /= Norm;
+		s2 /= Norm;
+		s3 /= Norm;
+		s4 /= Norm;
+		// compensate acc
+		q1_dot -= (beta * s1);
+		q2_dot -= (beta * s2);
+		q3_dot -= (beta * s3);
+		q4_dot -= (beta * s4);
+	}
+	// Integrate 
+	q1 += q1_dot / sampleFreq;
+	q2 += q2_dot / sampleFreq;
+	q3 += q3_dot / sampleFreq;
+	q4 += q4_dot / sampleFreq;
+	// Normalise
+	Norm = sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4 );
+	q1 /= Norm;
+	q2 /= Norm;
+	q3 /= Norm;
+	q4 /= Norm;
+	// convert to euler
+	float y =  2*(q3*q4 + q1*q2);
+	float x =  2*(0.5 - q2*q2 - q3*q3);
+			q_pitch = atan2 (y,x) * -180 / M_PI;
+			y = -2*(q2*q4 - q1*q3);
+			x = 1;
+			q_roll = asin(y/x) * -180 / M_PI;		
+			y =  2*(q2*q3 + q1*q4);
+			x =  2*(0.5 - q3*q3 - q4*q4);			
+			q_yaw = atan2 (y,x) * 180 / M_PI;
+}
 
 /* USER CODE END 4 */
 
