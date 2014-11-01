@@ -55,28 +55,28 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-#define beta                        0.1
-#define ACCELEROMETER_SENSITIVITY   16384   
-#define GYROSCOPE_SENSITIVITY       131.07  
-#define M_PI                        3.14159265359	    
-#define sampleFreq                  250 			    // 250 hz sample rate!   
-#define limmit_I                    300
-#define battary_low_level           2540                // 1v = ~846   @ 3.0 v = 2540
-#define scale                       15                  // scale sppm
-#define t_compen                    0.45                // 0-1 for pitch roll compensate
-#define y_compen                    0.45                // 0-1 for yaw compensate
+const float beta                        =0.1     ;
+const float ACCELEROMETER_SENSITIVITY   =16384   ;
+const float GYROSCOPE_SENSITIVITY       =131.07  ;
+const float M_PI                        =3.14159265359;	    
+const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
+const float limmit_I                    =300     ;
+const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
+const float scale                       =15      ;              // scale sppm
+const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
+const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
 
 const float Kp_yaw    =7.59;
 const float Ki_yaw    =0.5;
-const float Kd_yaw    =1.35;
+const float Kd_yaw    =1.4;
 
 const float Kp_pitch	=2.65;
 const float Ki_pitch    =0.5;
-const float Kd_pitch    =1.09;
+const float Kd_pitch    =1.19;
 
 const float Kp_roll	    =2.65;
 const float Ki_roll  	=0.5;
-const float Kd_roll  	=0.88;
+const float Kd_roll  	=0.93;
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
 float q_yaw, q_pitch, q_roll;                                       // States value
@@ -609,7 +609,7 @@ volatile void Interrupt_call(void)
 		/* Controller */
 		PID_controller();
     
-		if(ch5 > 200){
+		if( ch3 > 100 ){
 			
 			Drive_motor_output();
             
@@ -623,7 +623,8 @@ volatile void Interrupt_call(void)
 			motor_C=0;
 			motor_D=0;
 			T_center=0;
-            if (reset_q){q1=1;
+            if (reset_q){
+            q1=1;
             q2=0;
             q3=0;
             q4=0;
@@ -638,7 +639,7 @@ volatile void Interrupt_call(void)
 		ch2=Channel[2]- 1510 ;
 		ch3=Channel[3]- 1110 ;
 		ch4=Channel[4]- 1510 ;
-		ch5=Channel[5]- 1510 ;
+//		ch5=Channel[5]- 1510 ;
 //		ch6=Channel[6]- 1110 ;
 //		ch7=Channel[7]- 1110 ;
 //		ch8=Channel[8]- 1110 ;
