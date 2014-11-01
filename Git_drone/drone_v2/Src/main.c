@@ -61,20 +61,24 @@ UART_HandleTypeDef huart1;
 #define M_PI                        3.14159265359	    
 #define sampleFreq                  250 			    // 250 hz sample rate!   
 #define limmit_I                    300
-#define battary_low_level           2961                // 1v = ~846   @ 3.5 v = 2961
-float Kp_yaw    =2.2;
-float Ki_yaw    =0.5;
-float Kd_yaw    =0.75;
+#define battary_low_level           2540                // 1v = ~846   @ 3.0 v = 2540
+#define scale                       15                  // scale sppm
+#define t_compen                    0.45                // 0-1 for pitch roll compensate
+#define y_compen                    0.45                // 0-1 for yaw compensate
 
-float Kp_pitch	=2.2;
-float Ki_pitch  =0.5;
-float Kd_pitch  =0.75;
+const float Kp_yaw    =7.59;
+const float Ki_yaw    =0.5;
+const float Kd_yaw    =1.35;
 
-float Kp_roll	=2.2;
-float Ki_roll  	=0.5;
-float Kd_roll  	=0.75;
+const float Kp_pitch	=2.65;
+const float Ki_pitch    =0.5;
+const float Kd_pitch    =1.09;
 
-float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ,T_centers= 0;	
+const float Kp_roll	    =2.65;
+const float Ki_roll  	=0.5;
+const float Kd_roll  	=0.88;
+
+float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
 float q_yaw, q_pitch, q_roll;                                       // States value
 float q1=1, q2=0, q3=0, q4=0 ;
 float gx_diff = 0, gy_diff=0, gz_diff=0;
@@ -84,16 +88,18 @@ float Error_yaw=0, Errer_pitch=0, Error_roll=0; 						//States Error
 float Sum_Error_yaw=0, Sum_Error_pitch=0, Sum_Error_roll=0;             // Sum of error
 float D_Error_yaw=0, D_Error_pitch=0, D_Error_roll=0; 					// error dot
 float Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for rotate axis
-
-uint16_t battery_voltage ;
+float t_compensate = 0;
 float T_center_minus = 0;
-/* USER CODE for SPPM Receiver  */
+float y_roll=0, y_pitch=0, y0_roll=0, y0_pitch=0 ; 
+uint16_t battery_voltage =0;
 
-uint16_t    tmp_Ch =0 ;
-uint16_t    Channel[10]={0} ;
-int16_t     ch1,ch2,ch3,ch4,ch5,ch6,ch7,ch8,ch9 ;
+/* USER CODE for SPPM Receiver  */
+uint8_t    reset_q =0 ;
+int16_t    tmp_Ch =0 ;
+int16_t    Channel[10]={0} ;
+int16_t     ch1=0,ch2=0,ch3=0,ch4=0,ch5=0,ch6=0,ch7=0,ch8=0,ch9=0 ;
 int8_t      Ch_count = 0 ;
-uint8_t     buf_uart[10]={0};	     // buffer uart
+int8_t      buf_uart[10]={0};	     // buffer uart
 int16_t     AccelGyro[6]={0};       // RAW states value
 int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value 
 
@@ -104,6 +110,7 @@ int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
+
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC_Init(void);
@@ -202,6 +209,11 @@ int main(void)
     
     start_pitch = q_pitch ; 
     start_roll  = q_roll  ;
+    
+    y0_roll = y_roll ;
+    y0_pitch = y_pitch ;
+    
+    reset_q = 1;
     
 	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn); // interrupt from sppm
 
@@ -522,13 +534,14 @@ volatile void PID_controller(void)
     float Buf_D_Error_yaw =Error_yaw;
 	float Buf_D_Errer_pitch=Errer_pitch;
 	float Buf_D_Error_roll=Error_roll; 
-    
-	T_center    = ch3*3 - T_center_minus  ;
-	yaw_center +=(ch4/5)/sampleFreq     ;
+     
+    T_center   = (ch3*3) + ((t_compensate*t_compen) + T_center_minus);
+
+	yaw_center +=((float)ch4/(scale/6))/sampleFreq     ;
 
 	Error_yaw 	= yaw_center - q_yaw	;
-	Errer_pitch = start_pitch + (ch2/30)-q_pitch	;
-	Error_roll 	= start_roll  + (ch1/30)-q_roll	;
+	Errer_pitch = start_pitch + (ch2/scale) - q_pitch	;
+	Error_roll 	= start_roll  + (ch1/scale) - q_roll	;
 	
 	Sum_Error_yaw 	+= Error_yaw   /sampleFreq ;
 	Sum_Error_pitch += Errer_pitch /sampleFreq ;
@@ -550,14 +563,17 @@ volatile void PID_controller(void)
 	Buf_D_Errer_pitch=Errer_pitch;
 	Buf_D_Error_roll=Error_roll; 
 
-	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Ki_yaw		* Sum_Error_yaw)   + (Kd_yaw * D_Error_yaw) ;
+	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Ki_yaw	* Sum_Error_yaw)       + (Kd_yaw * D_Error_yaw) ;
 	Del_pitch	= (Kp_pitch * Errer_pitch)	    + (Ki_pitch	* Sum_Error_pitch)     + (Kd_pitch * D_Error_pitch) ;
 	Del_roll	= (Kp_roll  * Error_roll)		+ (Ki_roll	* Sum_Error_roll)      + (Kd_roll * D_Error_roll) ;
 
-	motor_A=	T_center +Del_pitch	-Del_roll -Del_yaw ;
-	motor_B=	T_center +Del_pitch	+Del_roll +Del_yaw ;
-	motor_C=	T_center -Del_pitch	+Del_roll -Del_yaw ;
-	motor_D=	T_center -Del_pitch	-Del_roll +Del_yaw ;
+    float yaw_compensate = Del_yaw * y_compen ;
+    if (yaw_compensate < 0)  yaw_compensate *= -1;
+
+	motor_A=	T_center +Del_pitch	-Del_roll -Del_yaw + yaw_compensate;
+	motor_B=	T_center +Del_pitch	+Del_roll +Del_yaw + yaw_compensate;
+	motor_C=	T_center -Del_pitch	+Del_roll -Del_yaw + yaw_compensate;
+	motor_D=	T_center -Del_pitch	-Del_roll +Del_yaw + yaw_compensate;
 	
 	// limmit output max, min
 	if(motor_A < 1) motor_A = 0 ;
@@ -593,7 +609,7 @@ volatile void Interrupt_call(void)
 		/* Controller */
 		PID_controller();
     
-		if(ch3 > 50){
+		if(ch5 > 200){
 			
 			Drive_motor_output();
             
@@ -607,6 +623,11 @@ volatile void Interrupt_call(void)
 			motor_C=0;
 			motor_D=0;
 			T_center=0;
+            if (reset_q){q1=1;
+            q2=0;
+            q3=0;
+            q4=0;
+            q_yaw=0;}
 			yaw_center=0;
 			Drive_motor_output();
 		}
@@ -618,10 +639,15 @@ volatile void Interrupt_call(void)
 		ch3=Channel[3]- 1110 ;
 		ch4=Channel[4]- 1510 ;
 		ch5=Channel[5]- 1510 ;
-		ch6=Channel[6]- 1110 ;
-		ch7=Channel[7]- 1110 ;
-		ch8=Channel[8]- 1110 ;
-		ch9=Channel[9]- 1110 ;
+//		ch6=Channel[6]- 1110 ;
+//		ch7=Channel[7]- 1110 ;
+//		ch8=Channel[8]- 1110 ;
+//		ch9=Channel[9]- 1110 ;
+        
+        
+//         Kp_yaw 	=(float)ch6/260 +5 ;
+//         Ki_yaw   	=(float)ch7/260;
+//         Kd_yaw   	=(float)ch8/260;
 
         
         
@@ -632,7 +658,7 @@ volatile void Interrupt_call(void)
     // read battery voltage
     
 	battery_voltage = HAL_ADC_GetValue(&hadc);
-    T_center_minus -= 0.5 ; 
+    T_center_minus -= 0.25 ; 
     if( battery_voltage > battary_low_level )   T_center_minus = 0; 
     HAL_ADC_Start(&hadc);
 	
@@ -713,20 +739,23 @@ volatile void ahrs(void)
 	q3 /= Norm;
 	q4 /= Norm;
 	// convert to euler
-	float y =  2*(q3*q4 + q1*q2);
+	y_pitch =  2*(q3*q4 + q1*q2);
 	float x =  2*(0.5 - q2*q2 - q3*q3);
-			q_pitch = atan2 (y,x) * -180 / M_PI;
-			y = -2*(q2*q4 - q1*q3);
-			x = 1;
-			q_roll = asin(y/x) * -180 / M_PI;		
     
-//			y =  2*(q2*q3 + q1*q4);
-//			x =  2*(0.5 - q3*q3 - q4*q4);			
-//			q_yaw = atan2 (y,x) * 180 / M_PI;
-     
-     // 
+			q_pitch = atan2 (y_pitch,x) * -180 / M_PI;
+    
+            t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
+    
+			y_roll = -2*(q2*q4 - q1*q3);
+			q_roll = asin(y_roll) * -180 / M_PI;	
+
+            t_compensate *= (1+( y_roll - y0_roll)) ;       // roll angle compensate
+            
+            if(t_compensate < 0) t_compensate*=-1 ; // +value
+ 
             q_yaw   += gz/sampleFreq * 180 / M_PI ;
 }
+
 
 
 
