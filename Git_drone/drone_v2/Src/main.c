@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 26/10/2014 01:42:54
+  * Date               : 02/11/2014 19:54:02
   * Description        : Main program body
   ******************************************************************************
   *
@@ -49,7 +49,6 @@ I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim14;
-TIM_HandleTypeDef htim16;
 
 UART_HandleTypeDef huart1;
 
@@ -62,7 +61,8 @@ const float M_PI                        =3.14159265359;
 const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
 const float limmit_I                    =300     ;
 const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
-const float scale                       =15      ;              // scale sppm
+//const float scale                       =15      ;              // scale sppm -400 <=> 400
+const float scale                       =15/4      ;              // scale bluetooth -100 <=> 100
 const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
 const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
 
@@ -102,7 +102,7 @@ int8_t      Ch_count = 0 ;
 
 
 
-int8_t      buf_uart[10]={0};	     // buffer uart
+int8_t     buf_uart[5]={0};	     // buffer uart
 int16_t     AccelGyro[6]={0};       // RAW states value
 int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value 
 
@@ -113,14 +113,12 @@ int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM14_Init(void);
-static void MX_TIM16_Init(void);
 static void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
@@ -137,6 +135,7 @@ volatile void PID_controller(void);
 volatile void Drive_motor_output(void);
 volatile void Interrupt_call(void);
 volatile void ahrs(void);
+
 //void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw);
 //volatile void Read_Angle(void);
 
@@ -167,7 +166,6 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM3_Init();
   MX_TIM14_Init();
-  MX_TIM16_Init();
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
@@ -175,20 +173,18 @@ int main(void)
   /* USER CODE END 2 */
 
   /* USER CODE BEGIN 3 */
-	HAL_NVIC_DisableIRQ(EXTI0_1_IRQn);	
+//	HAL_NVIC_DisableIRQ(EXTI0_1_IRQn);	
 	HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
 
 
 	Initial_MPU6050();
-	
-    HAL_TIM_Base_Start(&htim16);
 	
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
 	HAL_TIM_PWM_Start(&htim14,TIM_CHANNEL_1);
 	
-	HAL_Delay(1000);
+	HAL_Delay(100);
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);
 	uint8_t xxx = 30;
@@ -205,8 +201,8 @@ int main(void)
 		gx_diff /= 30;
 		gy_diff /= 30;
 		gz_diff /= 30;
-	
-	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from imu
+		HAL_NVIC_EnableIRQ(EXTI4_15_IRQn); // interrupt from imu
+
 	
     HAL_Delay(300); // read start angle
     
@@ -217,8 +213,14 @@ int main(void)
     y0_pitch = y_pitch ;
     
     reset_q = 1;
+   
+//    HAL_NVIC_SetPriority(USART1_IRQn, 1, 0);
+
+//    HAL_NVIC_EnableIRQ(USART1_IRQn);
+
+
     
-	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn); // interrupt from sppm
+//	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
 
   /* Infinite loop */
   while (1)
@@ -375,20 +377,6 @@ void MX_TIM14_Init(void)
 
 }
 
-/* TIM16 init function */
-void MX_TIM16_Init(void)
-{
-
-  htim16.Instance = TIM16;
-  htim16.Init.Prescaler = 47;
-  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 0xffff;
-  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim16.Init.RepetitionCounter = 0;
-  HAL_TIM_Base_Init(&htim16);
-
-}
-
 /* USART1 init function */
 void MX_USART1_UART_Init(void)
 {
@@ -400,7 +388,7 @@ void MX_USART1_UART_Init(void)
   huart1.Init.Parity = UART_PARITY_NONE;
   huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_8;
   huart1.Init.OneBitSampling = UART_ONEBIT_SAMPLING_DISABLED ;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart1);
@@ -431,19 +419,15 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA1 PA5 */
-//  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_5;
+  /*Configure GPIO pin : PA5 */
   GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
-
-//  HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
-//  HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
 
 }
 
@@ -539,7 +523,7 @@ volatile void PID_controller(void)
 	float Buf_D_Errer_pitch=Errer_pitch;
 	float Buf_D_Error_roll=Error_roll; 
      
-    T_center   = (ch3*3) + ((t_compensate*t_compen) + T_center_minus);
+    T_center   = (((float)ch3/scale)*45) + ((t_compensate*t_compen) + T_center_minus);
 
 	yaw_center +=((float)ch4/(scale/6))/sampleFreq     ;
 
@@ -602,73 +586,88 @@ volatile void Drive_motor_output(void)
 }
 volatile void Interrupt_call(void)
 {
-		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
-		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
+//		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
+//		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
 	
 		/* Read data from sensor */
-		MPU6050_GetRawAccelGyro(AccelGyro);
-	
-		ahrs();
-	
-		/* Controller */
-		PID_controller();
-    
-		if( ch3 > 100 ){
-			
-			Drive_motor_output();
-            
-		}else{
-            
-			Sum_Error_yaw=0;
-			Sum_Error_pitch=0;
-			Sum_Error_roll=0;             
-			motor_A=0;
-			motor_B=0;
-			motor_C=0;
-			motor_D=0;
-			T_center=0;
-            if (reset_q){
-            q1=1;
-            q2=0;
-            q3=0;
-            q4=0;
-            q_yaw=0;}
-			yaw_center=0;
-			Drive_motor_output();
-		}
-		
+//		MPU6050_GetRawAccelGyro(AccelGyro);
+//	
+//		ahrs();
+//	
+//		/* Controller */
+//		PID_controller();
+//    
+//		if( ch3 > 100 ){
+//			
+//			//Drive_motor_output();
+//            
+//		}else{
+//            
+//			Sum_Error_yaw=0;
+//			Sum_Error_pitch=0;
+//			Sum_Error_roll=0;             
+//			motor_A=0;
+//			motor_B=0;
+//			motor_C=0;
+//			motor_D=0;
+//			T_center=0;
+//            if (reset_q){
+//            q1=1;
+//            q2=0;
+//            q3=0;
+//            q4=0;
+//            q_yaw=0;}
+//			yaw_center=0;
+//			//Drive_motor_output();
+//		}
+//		
 		// update sppm read
         
-	    ch1=Channel[1]- 1510 ;
-		ch2=Channel[2]- 1510 ;
-		ch3=Channel[3]- 1110 ;
-		ch4=Channel[4]- 1510 ;
+//	    ch1=Channel[1]- 1510 ;
+//		ch2=Channel[2]- 1510 ;
+//		ch3=Channel[3]- 1110 ;
+//		ch4=Channel[4]- 1510 ;
 //		ch5=Channel[5]- 1510 ;
 //		ch6=Channel[6]- 1110 ;
 //		ch7=Channel[7]- 1110 ;
 //		ch8=Channel[8]- 1110 ;
 //		ch9=Channel[9]- 1110 ;
         
-        
-//         Kp_yaw 	=(float)ch6/260 +5 ;
-//         Ki_yaw   	=(float)ch7/260;
-//         Kd_yaw   	=(float)ch8/260;
 
         
+	  /* Sent & eceive data from Bluetooth serial */
         
-        
-//	  /* Sent & eceive data from Bluetooth serial */
-//		HAL_UART_Receive_IT(&huart1,buf_uart,10);
-        
-    // read battery voltage
+    HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,5);
+      
+      // read battery voltage
     
-	battery_voltage = HAL_ADC_GetValue(&hadc);
-    T_center_minus -= 0.25 ; 
-    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
-    HAL_ADC_Start(&hadc);
+//	battery_voltage = HAL_ADC_GetValue(&hadc);
+//    T_center_minus -= 0.25 ; 
+//    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
+//    HAL_ADC_Start(&hadc);
 	
-	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
+}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+ //   HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
+ //   float ch3b;
+  //  if(buf_uart[0]==0xff){
+        
+        ch1= buf_uart[1]   ; // roll
+        ch2= buf_uart[2]   ; // pitch
+//        ch3b = buf_uart[3]+100   ; // throtle  map to 0 <=>200
+        ch3= buf_uart[3]  ; // throtle  map to 0 <=>200
+        ch4= buf_uart[4]   ; // yaw
+        
+ //   }
+    
+//                 ch3 = 856.2 + ch3b * 5.4 ;   
+//    if(ch3b< 34) ch3 = ch3b * 25.2 ;
+//    if(ch3b>166) ch3 = 1518 + ch3b * 25.2 ;   
+//    HAL_UART_Receive_IT(&huart1,buf_uart,5);
+//    HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 }
 //volatile void Read_SPPM(void)
 //{
@@ -681,6 +680,7 @@ volatile void Interrupt_call(void)
 //}
 volatile void ahrs(void)
 {
+
 	// quaternion base process 
 	float Norm;
 	float ax = AccelGyro[0];
@@ -702,24 +702,12 @@ volatile void ahrs(void)
 		ay /= Norm;
 		az /= Norm;   
 
-		float _2q1 = 2 * q1;
-		float _2q2 = 2 * q2;
-		float _2q3 = 2 * q3;
-		float _2q4 = 2 * q4;
-		float _4q1 = 4 * q1;
-		float _4q2 = 4 * q2;
-		float _4q3 = 4 * q3;
-		float _8q2 = 8 * q2;
-		float _8q3 = 8 * q3;
-		float q1q1 = q1 * q1;
-		float q2q2 = q2 * q2;
-		float q3q3 = q3 * q3;
-		float q4q4 = q4 * q4;
+        
 		// Gradient decent 
-		float s1 = _4q1 * q3q3 + _2q4 * ax + _4q1 * q2q2 - _2q2 * ay;
-		float s2 = _4q2 * q4q4 - _2q4 * ax + 4 * q1q1 * q2 - _2q1 * ay - _4q2 + _8q2 * q2q2 + _8q2 * q3q3 + _4q2 * az;
-		float s3 = 4 * q1q1 * q3 + _2q1 * ax + _4q3 * q4q4 - _2q4 * ay - _4q3 + _8q3 * q2q2 + _8q3 * q3q3 + _4q3 * az;
-		float s4 = 4 * q2q2 * q4 - _2q2 * ax + 4 * q3q3 * q4 - _2q3 * ay;
+		float s1 = 4 * q1 * q3 * q3 + 2 * q4 * ax + 4 * q1 * q2 * q2 - 2 * q2 * ay;
+		float s2 = 4 * q2 * q4 * q4 - 2 * q4 * ax + 4 * q1 * q1 * q2 - 2 * q1 * ay - 4 * q2 + 8 * q2 * q2 * q2 + 8 * q2 * q3 * q3 + 4 * q2 * az;
+		float s3 = 4 * q1 * q1 * q3 + 2 * q1 * ax + 4 * q3 * q4 * q4 - 2 * q4 * ay - 4 * q3 + 8 * q3 * q2 * q2 + 8 * q3 * q3 * q3 + 4 * q3 * az;
+		float s4 = 4 * q2 * q2 * q4 - 2 * q2 * ax + 4 * q3 * q3 * q4 - 2 * q3 * ay;
 		// Normalise 
 		Norm = sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
 		s1 /= Norm;
@@ -747,7 +735,7 @@ volatile void ahrs(void)
 	y_pitch =  2*(q3*q4 + q1*q2);
 	float x =  2*(0.5 - q2*q2 - q3*q3);
     
-			q_pitch = atan2 (y_pitch,x) * -180 / M_PI;
+			q_pitch = atan2(y_pitch,x) * -180 / M_PI;
     
             t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
     
@@ -760,6 +748,7 @@ volatile void ahrs(void)
  
             q_yaw   += gz/sampleFreq * 180 / M_PI ;
 }
+
 
 
 
