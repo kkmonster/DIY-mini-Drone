@@ -203,7 +203,7 @@ int main(void)
 		gy_diff /= 30;
 		gz_diff /= 30;
 	
-	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from imu
+	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);  // interrupt from imu
 	
     HAL_Delay(300); // read start angle
     
@@ -215,7 +215,7 @@ int main(void)
     
     reset_q = 1;
     
-	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn); // interrupt from sppm
+	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
 
   /* Infinite loop */
   while (1)
