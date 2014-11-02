@@ -99,6 +99,9 @@ int16_t    tmp_Ch =0 ;
 int16_t    Channel[10]={0} ;
 int16_t     ch1=0,ch2=0,ch3=0,ch4=0,ch5=0,ch6=0,ch7=0,ch8=0,ch9=0 ;
 int8_t      Ch_count = 0 ;
+
+
+
 int8_t      buf_uart[10]={0};	     // buffer uart
 int16_t     AccelGyro[6]={0};       // RAW states value
 int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value 
@@ -397,7 +400,7 @@ void MX_USART1_UART_Init(void)
   huart1.Init.Parity = UART_PARITY_NONE;
   huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_8;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   huart1.Init.OneBitSampling = UART_ONEBIT_SAMPLING_DISABLED ;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart1);
@@ -429,7 +432,8 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA1 PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_5;
+//  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_5;
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -438,8 +442,8 @@ void MX_GPIO_Init(void)
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
-  HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
+//  HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
+//  HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
 
 }
 
@@ -666,15 +670,15 @@ volatile void Interrupt_call(void)
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
 }
-volatile void Read_SPPM(void)
-{
-	Ch_count++;
-	tmp_Ch = TIM16->CNT ;
-	TIM16->CNT = 0 ;
-	if (tmp_Ch > 3000)Ch_count = 0;
-	Channel[Ch_count] = tmp_Ch ;
+//volatile void Read_SPPM(void)
+//{
+//	Ch_count++;
+//	tmp_Ch = TIM16->CNT ;
+//	TIM16->CNT = 0 ;
+//	if (tmp_Ch > 3000)Ch_count = 0;
+//	Channel[Ch_count] = tmp_Ch ;
 
-}
+//}
 volatile void ahrs(void)
 {
 	// quaternion base process 

@@ -90,7 +90,7 @@ void EXTI0_1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI0_1_IRQn 0 */
 	
-	Read_SPPM();
+//	Read_SPPM();
 
   /* USER CODE END EXTI0_1_IRQn 0 */
   HAL_NVIC_ClearPendingIRQ(EXTI0_1_IRQn);
