@@ -126,11 +126,13 @@ void MPU6050_WriteBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_
 void MPU6050_ReadBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t *data);
 void MPU6050_ReadBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_t *data);
 void MPU6050_GetRawAccelGyro(int16_t* AccelGyro);
-volatile void Controller(void);
-volatile void PID_controller(void);
-volatile void Drive_motor_output(void);
-volatile void Interrupt_call(void);
-volatile void ahrs(void);
+void Controller(void);
+void PD_controller(void);
+void Drive_motor_output(void);
+void Interrupt_call(void);
+void ahrs(void);
+
+
 //void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw);
 //volatile void Read_Angle(void);
 
@@ -506,9 +508,8 @@ void MPU6050_GetRawAccelGyro(int16_t* AccelGyro)
 
 }
 
-volatile void PID_controller(void)
+void PD_controller(void)
 {
-
     float Buf_D_Error_yaw =Error_yaw;
 	float Buf_D_Errer_pitch=Errer_pitch;
 	float Buf_D_Error_roll=Error_roll; 
@@ -520,30 +521,14 @@ volatile void PID_controller(void)
 	Error_yaw 	= yaw_center - q_yaw	;
 	Errer_pitch = start_pitch + (ch2/scale) - q_pitch	;
 	Error_roll 	= start_roll  + (ch1/scale) - q_roll	;
-	
-	Sum_Error_yaw 	+= Error_yaw   /sampleFreq ;
-	Sum_Error_pitch += Errer_pitch /sampleFreq ;
-	Sum_Error_roll 	+= Error_roll  /sampleFreq ;
-	
-    // protect 
-	if(Sum_Error_yaw>limmit_I)Sum_Error_yaw =limmit_I;
-	if(Sum_Error_yaw<-limmit_I)Sum_Error_yaw =-limmit_I;
-	if(Sum_Error_pitch>limmit_I)Sum_Error_pitch =limmit_I;
-	if(Sum_Error_pitch<-limmit_I)Sum_Error_pitch =-limmit_I;
-	if(Sum_Error_roll>limmit_I)Sum_Error_roll =limmit_I;
-	if(Sum_Error_roll<-limmit_I)Sum_Error_roll =-limmit_I;
-	
+
 	D_Error_yaw =  (Error_yaw-Buf_D_Error_yaw)    *sampleFreq ;
 	D_Error_pitch =(Errer_pitch-Buf_D_Errer_pitch)*sampleFreq ;
 	D_Error_roll = (Error_roll-Buf_D_Error_roll)  *sampleFreq ;
 
-	Buf_D_Error_yaw =Error_yaw;
-	Buf_D_Errer_pitch=Errer_pitch;
-	Buf_D_Error_roll=Error_roll; 
-
-	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Ki_yaw	* Sum_Error_yaw)       + (Kd_yaw * D_Error_yaw) ;
-	Del_pitch	= (Kp_pitch * Errer_pitch)	    + (Ki_pitch	* Sum_Error_pitch)     + (Kd_pitch * D_Error_pitch) ;
-	Del_roll	= (Kp_roll  * Error_roll)		+ (Ki_roll	* Sum_Error_roll)      + (Kd_roll * D_Error_roll) ;
+	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Kd_yaw * D_Error_yaw) ;
+	Del_pitch	= (Kp_pitch * Errer_pitch)	    + (Kd_pitch * D_Error_pitch) ;
+	Del_roll	= (Kp_roll  * Error_roll)		+ (Kd_roll * D_Error_roll) ;
 
     float yaw_compensate = Del_yaw * y_compen ;
     if (yaw_compensate < 0)  yaw_compensate *= -1;
@@ -566,7 +551,7 @@ volatile void PID_controller(void)
     
 }
 
-volatile void Drive_motor_output(void)
+void Drive_motor_output(void)
 {
 
 	TIM3 ->CCR1 = motor_D ;
@@ -574,7 +559,7 @@ volatile void Drive_motor_output(void)
 	TIM3 ->CCR4 = motor_C ;
 	TIM14->CCR1 = motor_B ;
 }
-volatile void Interrupt_call(void)
+void Interrupt_call(void)
 {
 		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
 		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
@@ -585,7 +570,7 @@ volatile void Interrupt_call(void)
 		ahrs();
 	
 		/* Controller */
-		PID_controller();
+		PD_controller();
     
 		if( ch3 > 100 ){
 			
@@ -619,7 +604,7 @@ volatile void Interrupt_call(void)
 		ch4=Channel[4];
 
         
-//	  /* Sent & eceive data from Bluetooth serial */
+    /* Sent & eceive data from Bluetooth serial */
 	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
         
     // read battery voltage
@@ -632,7 +617,7 @@ volatile void Interrupt_call(void)
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
 }
-volatile void Read_SPPM(void)
+void Read_SPPM(void)
 {
 	Ch_count++;
 	tmp_Ch = TIM16->CNT ;
@@ -641,7 +626,7 @@ volatile void Read_SPPM(void)
 	Channel[Ch_count] = tmp_Ch ;
 
 }
-volatile void ahrs(void)
+void ahrs(void)
 {
 	// quaternion base process 
 	float Norm;
@@ -722,10 +707,6 @@ volatile void ahrs(void)
  
             q_yaw   += gz/sampleFreq * 180 / M_PI ;
 }
-
-
-
-
 
 /* USER CODE END 4 */
 
