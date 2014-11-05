@@ -556,9 +556,6 @@ volatile void PID_controller(void)
 	D_Error_pitch =(Errer_pitch-Buf_D_Errer_pitch)*sampleFreq ;
 	D_Error_roll = (Error_roll-Buf_D_Error_roll)  *sampleFreq ;
 
-	Buf_D_Error_yaw =Error_yaw;
-	Buf_D_Errer_pitch=Errer_pitch;
-	Buf_D_Error_roll=Error_roll; 
 
 	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Ki_yaw	* Sum_Error_yaw)       + (Kd_yaw * D_Error_yaw) ;
 	Del_pitch	= (Kp_pitch * Errer_pitch)	    + (Ki_pitch	* Sum_Error_pitch)     + (Kd_pitch * D_Error_pitch) ;
