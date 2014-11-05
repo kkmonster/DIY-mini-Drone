@@ -659,7 +659,7 @@ volatile void ahrs(void)
 
 	if(!((ax == 0) && (ay == 0) && (az == 0))) {
 		// Normalise 
-		Norm = 0;//sqrt(ax * ax + ay * ay + az * az);
+		Norm = sqrt(ax * ax + ay * ay + az * az);
 		ax /= Norm;
 		ay /= Norm;
 		az /= Norm;   
