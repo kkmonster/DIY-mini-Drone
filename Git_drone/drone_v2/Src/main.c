@@ -125,16 +125,12 @@ void MPU6050_WriteBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uin
 void MPU6050_WriteBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_t data);
 void MPU6050_ReadBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t *data);
 void MPU6050_ReadBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_t *data);
-void MPU6050_GetRawAccelGyro(int16_t* AccelGyro);
+void MPU6050_GetRawAccelGyro(void);
 void Controller(void);
 void PD_controller(void);
 void Drive_motor_output(void);
 void Interrupt_call(void);
 void ahrs(void);
-
-
-//void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw);
-//volatile void Read_Angle(void);
 
 /* USER CODE END PFP */
 
@@ -173,10 +169,8 @@ int main(void)
 	HAL_NVIC_DisableIRQ(EXTI0_1_IRQn);	
 	HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
 
-
 	Initial_MPU6050();
-	
-	
+		
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_4);
@@ -187,7 +181,7 @@ int main(void)
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);
 	uint8_t xxx = 20;
 	while (xxx > 0){
-		MPU6050_GetRawAccelGyro(AccelGyro);
+		MPU6050_GetRawAccelGyro();
 
 		gx_diff += AccelGyro[3];
 		gy_diff += AccelGyro[4];
@@ -495,7 +489,7 @@ void MPU6050_ReadBit(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitNum, uint8_t
 		HAL_I2C_Mem_Read(&hi2c1,slaveAddr,regAddr,1,&tmp,1,1);
     *data = tmp & (1 << bitNum);
 }
-void MPU6050_GetRawAccelGyro(int16_t* AccelGyro)
+void MPU6050_GetRawAccelGyro(void)
 {
     uint8_t tmpBuffer[14];
 	  HAL_I2C_Mem_Read(&hi2c1,MPU6050_DEFAULT_ADDRESS,MPU6050_RA_ACCEL_XOUT_H,1,tmpBuffer,14,1);
@@ -565,7 +559,7 @@ void Interrupt_call(void)
 		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
 	
 		/* Read data from sensor */
-		MPU6050_GetRawAccelGyro(AccelGyro);
+		MPU6050_GetRawAccelGyro();
 	
 		ahrs();
 	
@@ -615,15 +609,6 @@ void Interrupt_call(void)
     HAL_ADC_Start(&hadc);
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
-
-}
-void Read_SPPM(void)
-{
-	Ch_count++;
-	tmp_Ch = TIM16->CNT ;
-	TIM16->CNT = 0 ;
-	if (tmp_Ch > 3000)Ch_count = 0;
-	Channel[Ch_count] = tmp_Ch ;
 
 }
 void ahrs(void)
@@ -706,6 +691,21 @@ void ahrs(void)
             if(t_compensate < 0) t_compensate*=-1 ; // +value
  
             q_yaw   += gz/sampleFreq * 180 / M_PI ;
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+    int8_t i=0;
+    while(buf_uart[i] != 0xff){
+        i++;
+    }
+    i++ ;
+    ch1 = buf_uart[i];
+    i++ ;
+    ch2 = buf_uart[i];   
+    i++ ;
+    ch3 = buf_uart[i];  
+    i++ ;
+    ch4 = buf_uart[i];
 }
 
 /* USER CODE END 4 */
