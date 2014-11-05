@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 26/10/2014 01:42:54
+  * Date               : 05/11/2014 18:58:00
   * Description        : Main program body
   ******************************************************************************
   *
@@ -49,7 +49,6 @@ I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim14;
-TIM_HandleTypeDef htim16;
 
 UART_HandleTypeDef huart1;
 
@@ -110,14 +109,12 @@ int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM14_Init(void);
-static void MX_TIM16_Init(void);
 static void MX_USART1_UART_Init(void);
 
 /* USER CODE BEGIN PFP */
@@ -164,7 +161,6 @@ int main(void)
   MX_I2C1_Init();
   MX_TIM3_Init();
   MX_TIM14_Init();
-  MX_TIM16_Init();
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
@@ -178,7 +174,6 @@ int main(void)
 
 	Initial_MPU6050();
 	
-    HAL_TIM_Base_Start(&htim16);
 	
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
@@ -372,20 +367,6 @@ void MX_TIM14_Init(void)
 
 }
 
-/* TIM16 init function */
-void MX_TIM16_Init(void)
-{
-
-  htim16.Instance = TIM16;
-  htim16.Init.Prescaler = 47;
-  htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 0xffff;
-  htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim16.Init.RepetitionCounter = 0;
-  HAL_TIM_Base_Init(&htim16);
-
-}
-
 /* USART1 init function */
 void MX_USART1_UART_Init(void)
 {
@@ -428,14 +409,14 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA1 PA5 */
+  /*Configure GPIO pin : PA5 */
   GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
 }
@@ -678,7 +659,7 @@ volatile void ahrs(void)
 
 	if(!((ax == 0) && (ay == 0) && (az == 0))) {
 		// Normalise 
-		Norm = sqrt(ax * ax + ay * ay + az * az);
+		Norm = 0;//sqrt(ax * ax + ay * ay + az * az);
 		ax /= Norm;
 		ay /= Norm;
 		az /= Norm;   
