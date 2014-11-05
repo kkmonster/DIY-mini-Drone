@@ -66,9 +66,9 @@ const float scale                       =15      ;              // scale sppm
 const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
 const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
 
-const float Kp_yaw    =7.59;
-const float Ki_yaw    =0.5;
-const float Kd_yaw    =1.4;
+const float Kp_yaw      =7.59;
+const float Ki_yaw      =0.5;
+const float Kd_yaw      =1.4;
 
 const float Kp_pitch	=2.65;
 const float Ki_pitch    =0.5;
@@ -188,7 +188,7 @@ int main(void)
 	HAL_Delay(1000);
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);
-	uint8_t xxx = 30;
+	uint8_t xxx = 20;
 	while (xxx > 0){
 		MPU6050_GetRawAccelGyro(AccelGyro);
 
@@ -197,11 +197,11 @@ int main(void)
 		gz_diff += AccelGyro[5];
 
         xxx--;
-		HAL_Delay(50);
+		HAL_Delay(100);
 	}
-		gx_diff /= 30;
-		gy_diff /= 30;
-		gz_diff /= 30;
+		gx_diff /= 20;
+		gy_diff /= 20;
+		gz_diff /= 20;
 	
 	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);  // interrupt from imu
 	
@@ -429,7 +429,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
   /*Configure GPIO pins : PA1 PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_1|GPIO_PIN_5;
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
@@ -437,9 +437,6 @@ void MX_GPIO_Init(void)
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
 
 }
 
@@ -635,26 +632,14 @@ volatile void Interrupt_call(void)
 		
 		// update sppm read
         
-	    ch1=Channel[1]- 1510 ;
-		ch2=Channel[2]- 1510 ;
-		ch3=Channel[3]- 1110 ;
-		ch4=Channel[4]- 1510 ;
-//		ch5=Channel[5]- 1510 ;
-//		ch6=Channel[6]- 1110 ;
-//		ch7=Channel[7]- 1110 ;
-//		ch8=Channel[8]- 1110 ;
-//		ch9=Channel[9]- 1110 ;
-        
-        
-//         Kp_yaw 	=(float)ch6/260 +5 ;
-//         Ki_yaw   	=(float)ch7/260;
-//         Kd_yaw   	=(float)ch8/260;
+	    ch1=Channel[1];
+		ch2=Channel[2];
+		ch3=Channel[3];
+		ch4=Channel[4];
 
         
-        
-        
 //	  /* Sent & eceive data from Bluetooth serial */
-//		HAL_UART_Receive_IT(&huart1,buf_uart,10);
+	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
         
     // read battery voltage
     
@@ -760,35 +745,7 @@ volatile void ahrs(void)
 
 
 
-//volatile void Read_Angle(void)
-//{
 
-//	ComplementaryFilter( AccelGyro, &pitch, &roll, &yaw);
-//}
-
-//void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw)
-//{
-//    float pitchAcc, rollAcc;               
-// 
-//    // Integrate the gyroscope data -> int(angularSpeed) = angle
-//    *pitch -= (AccelGyro[3] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the X-axis
-//    *roll  -= (AccelGyro[4] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Y-axis
-//	  *yaw   += (AccelGyro[5] / GYROSCOPE_SENSITIVITY)/sampleFreq ;   // Angle around the Z-axis
-
-//    // Compensate for drift with accelerometer data if !bullshit
-//    // Sensitivity = -2 to 2 G at 16Bit -> 2G = 32768 && 0.5G = 8192
-//    int16_t forceMagnitudeApprox = abs(AccelGyro[0]) + abs(AccelGyro[1]) + abs(AccelGyro[2]);
-//    if (((forceMagnitudeApprox > 8192) && (forceMagnitudeApprox < 32768)))
-//    {
-//	// Turning around the X axis results in a vector on the Y-axis
-//        pitchAcc = atan2((float)AccelGyro[1], (float)AccelGyro[2]) * 180 / M_PI;
-//        *pitch = *pitch * 0.96 - pitchAcc * 0.04 ;
-// 
-//	// Turning around the Y axis results in a vector on the X-axis
-//        rollAcc = atan2((float)AccelGyro[0], (float)AccelGyro[2]) * 180 / M_PI;
-//        *roll = *roll * 0.96 + rollAcc * 0.04 ;
-//    }
-//} 
 /* USER CODE END 4 */
 
 #ifdef USE_FULL_ASSERT
