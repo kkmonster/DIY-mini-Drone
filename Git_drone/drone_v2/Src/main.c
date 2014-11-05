@@ -698,14 +698,12 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     while(buf_uart[i] != 0xff){
         i++;
     }
-    i++ ;
-    ch1 = buf_uart[i];
-    i++ ;
-    ch2 = buf_uart[i];   
-    i++ ;
-    ch3 = buf_uart[i];  
-    i++ ;
-    ch4 = buf_uart[i];
+    if (i<6){
+        i++ ; ch1 = buf_uart[i];
+        i++ ; ch2 = buf_uart[i];   
+        i++ ; ch3 = buf_uart[i];  
+        i++ ; ch4 = buf_uart[i];
+    }
 }
 
 /* USER CODE END 4 */
