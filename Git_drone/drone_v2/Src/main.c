@@ -67,6 +67,7 @@ const float scale                       =15      ;              // scale sppm
 const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
 const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
 
+
 const float Kp_yaw      =7.59;
 const float Ki_yaw      =0.5;
 const float Kd_yaw      =1.4;
@@ -97,7 +98,7 @@ uint16_t battery_voltage =0;
 uint8_t     reset_q =0 ;
 int16_t     tmp_Ch =0 ;
 int16_t     Channel[10]={0} ;
-int16_t     ch1=0,ch2=0,ch3=0,ch4=0,ch5=0,ch6=0,ch7=0,ch8=0,ch9=0 ;
+int16_t     ch1=0,ch2=0,ch3=0,ch4=0;
 int8_t      Ch_count = 0 ;
 int8_t      buf_uart[10]={0};	     // buffer uart
 int16_t     AccelGyro[6]={0};       // RAW states value
@@ -565,7 +566,7 @@ void Interrupt_call(void)
 		/* Read data from sensor */
 		MPU6050_GetRawAccelGyro();
 	
-		ahrs();
+//		ahrs();
 	
 		/* Controller */
 		PD_controller();
@@ -601,10 +602,10 @@ void Interrupt_call(void)
     pre_ble--;    
     // read battery voltage
     
-	battery_voltage = HAL_ADC_GetValue(&hadc);
-    T_center_minus -= 0.25 ; 
-    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
-    HAL_ADC_Start(&hadc);
+//	battery_voltage = HAL_ADC_GetValue(&hadc);
+//    T_center_minus -= 0.25 ; 
+//    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
+//    HAL_ADC_Start(&hadc);
 	
 //	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
@@ -624,8 +625,14 @@ void ahrs(void)
 	float q2_dot = 0.5 * ( q1 * gx + q3 * gz - q4 * gy);
 	float q3_dot = 0.5 * ( q1 * gy - q2 * gz + q4 * gx);
 	float q4_dot = 0.5 * ( q1 * gz + q2 * gy - q3 * gx);
+    
+    
+    
+    
+    
+    
 
-	if(!((ax == 0) && (ay == 0) && (az == 0))) {
+//	if(!((ax == 0) && (ay == 0) && (az == 0))) {
 		// Normalise 
 		Norm = sqrt(ax * ax + ay * ay + az * az);
 		ax /= Norm;
@@ -645,6 +652,7 @@ void ahrs(void)
 //		float q2 * q2 = q2 * q2;
 //		float q3 * q3 = q3 * q3;
 //		float q4 * q4 = q4 * q4;
+        
 		// Gradient decent 
 		float s1 = 4 * q1 * q3 * q3 + 2 * q4 * ax + 4 * q1 * q2 * q2 - 2 * q2 * ay;
 		float s2 = 4 * q2 * q4 * q4 - 2 * q4 * ax + 4 * q1 * q1 * q2 - 2 * q1 * ay - 4 * q2 + 8 * q2 * q2 * q2 + 8 * q2 * q3 * q3 + 4 * q2 * az;
@@ -661,7 +669,7 @@ void ahrs(void)
 		q2_dot -= (beta * s2);
 		q3_dot -= (beta * s3);
 		q4_dot -= (beta * s4);
-	}
+//	}
 	// Integrate 
 	q1 += q1_dot / sampleFreq;
 	q2 += q2_dot / sampleFreq;
@@ -697,7 +705,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     
     int8_t i=0;
     while(buf_uart[i++] != 120 ){
-            if (i>5) return;
+           if (i>5) return;
        
     }
         ch1 = buf_uart[i];
