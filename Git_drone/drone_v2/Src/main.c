@@ -565,7 +565,7 @@ void Interrupt_call(void)
 		/* Read data from sensor */
 		MPU6050_GetRawAccelGyro();
 	
-//		ahrs();
+		ahrs();
 	
 		/* Controller */
 		PD_controller();
@@ -632,24 +632,24 @@ void ahrs(void)
 		ay /= Norm;
 		az /= Norm;   
 
-		float _2q1 = 2 * q1;
-		float _2q2 = 2 * q2;
-		float _2q3 = 2 * q3;
-		float _2q4 = 2 * q4;
-		float _4q1 = 4 * q1;
-		float _4q2 = 4 * q2;
-		float _4q3 = 4 * q3;
-		float _8q2 = 8 * q2;
-		float _8q3 = 8 * q3;
-		float q1q1 = q1 * q1;
-		float q2q2 = q2 * q2;
-		float q3q3 = q3 * q3;
-		float q4q4 = q4 * q4;
+//		float 2 * q1 = 2 * q1;
+//		float 2 * q2 = 2 * q2;
+//		float 2 * q3 = 2 * q3;
+//		float 2 * q4 = 2 * q4;
+//		float 4 * q1 = 4 * q1;
+//		float 4 * q2 = 4 * q2;
+//		float 4 * q3 = 4 * q3;
+//		float 8 * q2 = 8 * q2;
+//		float 8 * q3 = 8 * q3;
+//		float q1 * q1 = q1 * q1;
+//		float q2 * q2 = q2 * q2;
+//		float q3 * q3 = q3 * q3;
+//		float q4 * q4 = q4 * q4;
 		// Gradient decent 
-		float s1 = _4q1 * q3q3 + _2q4 * ax + _4q1 * q2q2 - _2q2 * ay;
-		float s2 = _4q2 * q4q4 - _2q4 * ax + 4 * q1q1 * q2 - _2q1 * ay - _4q2 + _8q2 * q2q2 + _8q2 * q3q3 + _4q2 * az;
-		float s3 = 4 * q1q1 * q3 + _2q1 * ax + _4q3 * q4q4 - _2q4 * ay - _4q3 + _8q3 * q2q2 + _8q3 * q3q3 + _4q3 * az;
-		float s4 = 4 * q2q2 * q4 - _2q2 * ax + 4 * q3q3 * q4 - _2q3 * ay;
+		float s1 = 4 * q1 * q3 * q3 + 2 * q4 * ax + 4 * q1 * q2 * q2 - 2 * q2 * ay;
+		float s2 = 4 * q2 * q4 * q4 - 2 * q4 * ax + 4 * q1 * q1 * q2 - 2 * q1 * ay - 4 * q2 + 8 * q2 * q2 * q2 + 8 * q2 * q3 * q3 + 4 * q2 * az;
+		float s3 = 4 * q1 * q1 * q3 + 2 * q1 * ax + 4 * q3 * q4 * q4 - 2 * q4 * ay - 4 * q3 + 8 * q3 * q2 * q2 + 8 * q3 * q3 * q3 + 4 * q3 * az;
+		float s4 = 4 * q2 * q2 * q4 - 2 * q2 * ax + 4 * q3 * q3 * q4 - 2 * q3 * ay;
 		// Normalise 
 		Norm = sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
 		s1 /= Norm;
@@ -675,9 +675,9 @@ void ahrs(void)
 	q4 /= Norm;
 	// convert to euler
 	y_pitch =  2*(q3*q4 + q1*q2);
-	float x =  2*(0.5 - q2*q2 - q3*q3);
+	Norm =  2*(0.5 - q2*q2 - q3*q3);
     
-			q_pitch = atan2 (y_pitch,x) * -180 / M_PI;
+			q_pitch = atan2 (y_pitch,Norm) * -180 / M_PI;
     
            t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
     
