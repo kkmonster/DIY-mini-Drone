@@ -374,7 +374,7 @@ void MX_USART1_UART_Init(void)
   huart1.Init.Parity = UART_PARITY_NONE;
   huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_8;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   huart1.Init.OneBitSampling = UART_ONEBIT_SAMPLING_DISABLED ;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart1);
@@ -555,7 +555,7 @@ void Drive_motor_output(void)
 }
 void Interrupt_call(void)
 {
-		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
+//		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
 		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
 	
 		/* Read data from sensor */
@@ -568,7 +568,7 @@ void Interrupt_call(void)
     
 		if( ch3 > 100 ){
 			
-			Drive_motor_output();
+//			Drive_motor_output();
             
 		}else{
             
@@ -590,12 +590,12 @@ void Interrupt_call(void)
 			Drive_motor_output();
 		}
 		
-		// update sppm read
-        
-	    ch1=Channel[1];
-		ch2=Channel[2];
-		ch3=Channel[3];
-		ch4=Channel[4];
+//		// update sppm read
+//        
+//	    ch1=Channel[1];
+//		ch2=Channel[2];
+//		ch3=Channel[3];
+//		ch4=Channel[4];
 
         
     /* Sent & eceive data from Bluetooth serial */
@@ -608,7 +608,7 @@ void Interrupt_call(void)
     if( battery_voltage > battary_low_level )   T_center_minus = 0; 
     HAL_ADC_Start(&hadc);
 	
-	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
+//	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
 }
 void ahrs(void)
@@ -694,6 +694,7 @@ void ahrs(void)
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+    HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_1);
     int8_t i=0;
     while(buf_uart[i] != 0xff){
         i++;
