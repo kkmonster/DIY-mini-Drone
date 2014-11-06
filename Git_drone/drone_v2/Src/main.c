@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 05/11/2014 18:58:00
+  * Date               : 06/11/2014 19:57:48
   * Description        : Main program body
   ******************************************************************************
   *
@@ -39,6 +39,8 @@
 
 #include "MPU6050.h"
 #include <math.h>
+
+#define pre_ble_ct 5
 
 /* USER CODE END Includes */
 
@@ -84,7 +86,6 @@ float gx_diff = 0, gy_diff=0, gz_diff=0;
 float start_pitch=0, start_roll=0;
 float T_center =0, yaw_center=0;
 float Error_yaw=0, Errer_pitch=0, Error_roll=0; 						//States Error
-float Sum_Error_yaw=0, Sum_Error_pitch=0, Sum_Error_roll=0;             // Sum of error
 float D_Error_yaw=0, D_Error_pitch=0, D_Error_roll=0; 					// error dot
 float Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for rotate axis
 float t_compensate = 0;
@@ -93,14 +94,15 @@ float y_roll=0, y_pitch=0, y0_roll=0, y0_pitch=0 ;
 uint16_t battery_voltage =0;
 
 /* USER CODE for SPPM Receiver  */
-uint8_t    reset_q =0 ;
-int16_t    tmp_Ch =0 ;
-int16_t    Channel[10]={0} ;
+uint8_t     reset_q =0 ;
+int16_t     tmp_Ch =0 ;
+int16_t     Channel[10]={0} ;
 int16_t     ch1=0,ch2=0,ch3=0,ch4=0,ch5=0,ch6=0,ch7=0,ch8=0,ch9=0 ;
 int8_t      Ch_count = 0 ;
 int8_t      buf_uart[10]={0};	     // buffer uart
 int16_t     AccelGyro[6]={0};       // RAW states value
 int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value 
+int8_t      pre_ble = pre_ble_ct ;
 
 //int8_t bt_Ref_yaw_L=0, bt_Ref_pitch_L=0, bt_Ref_roll_L=0 ,bt_T_center_L = 0;	// data from bluetooth
 																															// enable
@@ -207,6 +209,8 @@ int main(void)
     reset_q = 1;
     
 	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
+    
+
 
   /* Infinite loop */
   while (1)
@@ -412,7 +416,7 @@ void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
 }
@@ -561,20 +565,17 @@ void Interrupt_call(void)
 		/* Read data from sensor */
 		MPU6050_GetRawAccelGyro();
 	
-		ahrs();
+//		ahrs();
 	
 		/* Controller */
 		PD_controller();
     
 		if( ch3 > 100 ){
 			
-//			Drive_motor_output();
+			Drive_motor_output();
             
 		}else{
-            
-			Sum_Error_yaw=0;
-			Sum_Error_pitch=0;
-			Sum_Error_roll=0;             
+        
 			motor_A=0;
 			motor_B=0;
 			motor_C=0;
@@ -589,18 +590,15 @@ void Interrupt_call(void)
 			yaw_center=0;
 			Drive_motor_output();
 		}
-		
-//		// update sppm read
-//        
-//	    ch1=Channel[1];
-//		ch2=Channel[2];
-//		ch3=Channel[3];
-//		ch4=Channel[4];
+
 
         
     /* Sent & eceive data from Bluetooth serial */
+    if(pre_ble ==0){
+    pre_ble = pre_ble_ct ;    
 	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
-        
+    }
+    pre_ble--;    
     // read battery voltage
     
 	battery_voltage = HAL_ADC_GetValue(&hadc);
@@ -681,12 +679,12 @@ void ahrs(void)
     
 			q_pitch = atan2 (y_pitch,x) * -180 / M_PI;
     
-            t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
+           t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
     
 			y_roll = -2*(q2*q4 - q1*q3);
 			q_roll = asin(y_roll) * -180 / M_PI;	
 
-            t_compensate *= (1+( y_roll - y0_roll)) ;       // roll angle compensate
+           t_compensate *= (1+( y_roll - y0_roll)) ;       // roll angle compensate
             
             if(t_compensate < 0) t_compensate*=-1 ; // +value
  
@@ -694,18 +692,24 @@ void ahrs(void)
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+ 
     HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_1);
+    
     int8_t i=0;
-    while(buf_uart[i] != 0xff){
-        i++;
+    while(buf_uart[i++] != 120 ){
+            if (i>5) return;
+       
     }
-    if (i<6){
-        i++ ; ch1 = buf_uart[i];
-        i++ ; ch2 = buf_uart[i];   
-        i++ ; ch3 = buf_uart[i];  
-        i++ ; ch4 = buf_uart[i];
-    }
+        ch1 = buf_uart[i];
+        i++ ; 
+        ch2 = buf_uart[i];   
+        i++ ; 
+        ch3 = (buf_uart[i]+100)*12;  
+        i++ ; 
+        ch4 = buf_uart[i];
 }
+    
+
 
 /* USER CODE END 4 */
 
