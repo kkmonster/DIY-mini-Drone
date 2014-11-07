@@ -56,29 +56,55 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-const float beta                        =0.1     ;
-const float ACCELEROMETER_SENSITIVITY   =16384   ;
-const float GYROSCOPE_SENSITIVITY       =131.07  ;
-const float M_PI                        =3.14159265359;	    
+//const float beta                        =0.1     ;
+//const float ACCELEROMETER_SENSITIVITY   =16384   ;
+//const float GYROSCOPE_SENSITIVITY       =131.07  ;
+//const float M_PI                        =3.14159265359;	    
 const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
-const float limmit_I                    =300     ;
-const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
+//const float limmit_I                    =300     ;
+//const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
 const float scale                       =15      ;              // scale sppm
-const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
-const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
+//const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
+//const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
+
+//const float Kp_yaw      =7.59;
+//const float Ki_yaw      =0.5;
+//const float Kd_yaw      =1.4;
+
+//const float Kp_pitch	=2.65;
+//const float Ki_pitch    =0.5;
+//const float Kd_pitch    =1.19;
+
+//const float Kp_roll	    =2.65;
+//const float Ki_roll  	=0.5;
+//const float Kd_roll  	=0.93;
+
+#define beta                        0.1f  
+#define ACCELEROMETER_SENSITIVITY   16384f  
+#define GYROSCOPE_SENSITIVITY       131.07f 
+#define M_PI                        3.14159265359f	    
+//#define sampleFreq                  250f      			    // 250 hz sample rate!   
+#define limmit_I                    300f    
+#define battary_low_level           2370f                // 1v = ~846   @ 2.8 v = 2368
+//#define scale                       15f                    // scale sppm
+#define t_compen                    0.45f                  // 0-1 for pitch roll compensate
+#define y_compen                    0.45f         // 0-1 for yaw compensate
+
+#define Kp_yaw      7.59f
+#define Ki_yaw      0.5f
+#define Kd_yaw      1.4f
+
+#define Kp_pitch	2.65f
+#define Ki_pitch    0.5f
+#define Kd_pitch    1.19f
+
+#define Kp_roll	    2.65f
+#define Ki_roll  	0.5f
+#define Kd_roll  	0.93f
 
 
-const float Kp_yaw      =7.59;
-const float Ki_yaw      =0.5;
-const float Kd_yaw      =1.4;
 
-const float Kp_pitch	=2.65;
-const float Ki_pitch    =0.5;
-const float Kd_pitch    =1.19;
 
-const float Kp_roll	    =2.65;
-const float Ki_roll  	=0.5;
-const float Kd_roll  	=0.93;
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
 float q_yaw, q_pitch, q_roll;                                       // States value
@@ -515,22 +541,21 @@ void PD_controller(void)
      
     T_center   = (ch3*3) + ((t_compensate*t_compen) + T_center_minus);
 
-	yaw_center +=((float)ch4/(scale/6))/sampleFreq     ;
-
+	yaw_center +=((float)ch4/((float)scale/6)) / (float)sampleFreq ;
 	Error_yaw 	= yaw_center - q_yaw	;
 	Errer_pitch = start_pitch + (ch2/scale) - q_pitch	;
 	Error_roll 	= start_roll  + (ch1/scale) - q_roll	;
 
-	D_Error_yaw =  (Error_yaw-Buf_D_Error_yaw)    *sampleFreq ;
-	D_Error_pitch =(Errer_pitch-Buf_D_Errer_pitch)*sampleFreq ;
-	D_Error_roll = (Error_roll-Buf_D_Error_roll)  *sampleFreq ;
+	D_Error_yaw =  (Error_yaw-Buf_D_Error_yaw)    *(float)sampleFreq ;
+	D_Error_pitch =(Errer_pitch-Buf_D_Errer_pitch)*(float)sampleFreq ;
+	D_Error_roll = (Error_roll-Buf_D_Error_roll)  *(float)sampleFreq ;
 
 	Del_yaw		= (Kp_yaw   * Error_yaw)		+ (Kd_yaw * D_Error_yaw) ;
 	Del_pitch	= (Kp_pitch * Errer_pitch)	    + (Kd_pitch * D_Error_pitch) ;
 	Del_roll	= (Kp_roll  * Error_roll)		+ (Kd_roll * D_Error_roll) ;
 
     float yaw_compensate = Del_yaw * y_compen ;
-    if (yaw_compensate < 0)  yaw_compensate *= -1;
+    if (yaw_compensate < 0)  yaw_compensate = -yaw_compensate;
 
 	motor_A=	T_center +Del_pitch	-Del_roll -Del_yaw + yaw_compensate;
 	motor_B=	T_center +Del_pitch	+Del_roll +Del_yaw + yaw_compensate;
@@ -566,7 +591,7 @@ void Interrupt_call(void)
 		/* Read data from sensor */
 		MPU6050_GetRawAccelGyro();
 	
-//		ahrs();
+		ahrs();
 	
 		/* Controller */
 		PD_controller();
@@ -617,9 +642,9 @@ void ahrs(void)
 	float ax = AccelGyro[0];
 	float ay = AccelGyro[1];
 	float az = AccelGyro[2];
-	float gx =((AccelGyro[3]-gx_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/180 ;
-	float gy =((AccelGyro[4]-gy_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/180 ;
-	float gz =((AccelGyro[5]-gz_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/180 ;
+	float gx =((AccelGyro[3]-gx_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/(float)180 ;
+	float gy =((AccelGyro[4]-gy_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/(float)180 ;
+	float gz =((AccelGyro[5]-gz_diff)/ GYROSCOPE_SENSITIVITY )*M_PI/(float)180 ;
 	
 	float q1_dot = 0.5 * (-q2 * gx - q3 * gy - q4 * gz);
 	float q2_dot = 0.5 * ( q1 * gx + q3 * gz - q4 * gy);
@@ -671,10 +696,10 @@ void ahrs(void)
 		q4_dot -= (beta * s4);
 //	}
 	// Integrate 
-	q1 += q1_dot / sampleFreq;
-	q2 += q2_dot / sampleFreq;
-	q3 += q3_dot / sampleFreq;
-	q4 += q4_dot / sampleFreq;
+	q1 += q1_dot / (float)sampleFreq;
+	q2 += q2_dot / (float)sampleFreq;
+	q3 += q3_dot / (float)sampleFreq;
+	q4 += q4_dot / (float)sampleFreq;
 	// Normalise
 	Norm = sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4 );
 	q1 /= Norm;
@@ -696,7 +721,7 @@ void ahrs(void)
             
             if(t_compensate < 0) t_compensate*=-1 ; // +value
  
-            q_yaw   += gz/sampleFreq * 180 / M_PI ;
+            q_yaw   += gz/(float)sampleFreq * 180 / M_PI ;
 }
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
