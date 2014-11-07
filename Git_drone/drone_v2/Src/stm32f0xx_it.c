@@ -38,7 +38,7 @@
 /* USER CODE BEGIN 0 */
 
 int8_t iqs_count= 0 ;
-
+extern void Interrupt_call(void);    
 
 /* USER CODE END 0 */
 /* External variables --------------------------------------------------------*/

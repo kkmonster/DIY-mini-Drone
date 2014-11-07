@@ -40,7 +40,7 @@
 #include "MPU6050.h"
 #include <math.h>
 
-#define pre_ble_ct 5
+#define pre_ble_ct 5.0f 
 
 /* USER CODE END Includes */
 
@@ -60,10 +60,10 @@ UART_HandleTypeDef huart1;
 //const float ACCELEROMETER_SENSITIVITY   =16384   ;
 //const float GYROSCOPE_SENSITIVITY       =131.07  ;
 //const float M_PI                        =3.14159265359;	    
-const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
+//const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
 //const float limmit_I                    =300     ;
 //const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
-const float scale                       =15      ;              // scale sppm
+//const float scale                       =15      ;              // scale sppm
 //const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
 //const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
 
@@ -80,13 +80,13 @@ const float scale                       =15      ;              // scale sppm
 //const float Kd_roll  	=0.93;
 
 #define beta                        0.1f  
-#define ACCELEROMETER_SENSITIVITY   16384f  
+#define ACCELEROMETER_SENSITIVITY   16384.0f  
 #define GYROSCOPE_SENSITIVITY       131.07f 
 #define M_PI                        3.14159265359f	    
-//#define sampleFreq                  250f      			    // 250 hz sample rate!   
-#define limmit_I                    300f    
-#define battary_low_level           2370f                // 1v = ~846   @ 2.8 v = 2368
-//#define scale                       15f                    // scale sppm
+#define sampleFreq                  250.0f      			    // 250 hz sample rate!   
+#define limmit_I                    300.0f    
+#define battary_low_level           2370.0f                // 1v = ~846   @ 2.8 v = 2368
+#define scale                       15.0f                    // scale sppm
 #define t_compen                    0.45f                  // 0-1 for pitch roll compensate
 #define y_compen                    0.45f         // 0-1 for yaw compensate
 
