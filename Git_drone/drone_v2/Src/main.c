@@ -40,8 +40,6 @@
 #include "MPU6050.h"
 #include <math.h>
 
-#define pre_ble_ct 5.0f 
-
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -56,29 +54,7 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-//const float beta                        =0.1     ;
-//const float ACCELEROMETER_SENSITIVITY   =16384   ;
-//const float GYROSCOPE_SENSITIVITY       =131.07  ;
-//const float M_PI                        =3.14159265359;	    
-//const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
-//const float limmit_I                    =300     ;
-//const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
-//const float scale                       =15      ;              // scale sppm
-//const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
-//const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
-
-//const float Kp_yaw      =7.59;
-//const float Ki_yaw      =0.5;
-//const float Kd_yaw      =1.4;
-
-//const float Kp_pitch	=2.65;
-//const float Ki_pitch    =0.5;
-//const float Kd_pitch    =1.19;
-
-//const float Kp_roll	    =2.65;
-//const float Ki_roll  	=0.5;
-//const float Kd_roll  	=0.93;
-
+#define pre_ble_ct 5.0f 
 #define beta                        0.1f  
 #define ACCELEROMETER_SENSITIVITY   16384.0f  
 #define GYROSCOPE_SENSITIVITY       131.07f 
@@ -133,7 +109,7 @@ int8_t      pre_ble = pre_ble_ct ;
 
 //int8_t bt_Ref_yaw_L=0, bt_Ref_pitch_L=0, bt_Ref_roll_L=0 ,bt_T_center_L = 0;	// data from bluetooth
 																															// enable
-
+//Program Size: Code=15404 RO-data=500 RW-data=168 ZI-data=1408  
 
 /* USER CODE END PV */
 
