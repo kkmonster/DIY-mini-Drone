@@ -54,7 +54,7 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-#define pre_ble_ct                  (int8_t)8
+#define pre_ble_ct                  (int8_t)5
 #define beta                        0.1f  
 #define ACCELEROMETER_SENSITIVITY   16384.0f  
 #define GYROSCOPE_SENSITIVITY       131.07f 
@@ -62,7 +62,7 @@ UART_HandleTypeDef huart1;
 #define sampleFreq                  250.0f      			    // 250 hz sample rate!   
 #define limmit_I                    300.0f    
 #define battary_low_level           2370.0f                // 1v = ~846   @ 2.8 v = 2368
-#define scale                       15.0f                    // scale sppm
+#define scale                       (int8_t)4                    // scale sppm
 #define t_compen                    0.45f                  // 0-1 for pitch roll compensate
 #define y_compen                    0.45f         // 0-1 for yaw compensate
 
@@ -517,7 +517,7 @@ void PD_controller(void)
      
     T_center   = (ch3*3) + ((t_compensate*t_compen) + T_center_minus);
 
-	yaw_center +=((float)ch4/((float)scale/6)) / (float)sampleFreq ;
+	yaw_center +=((float)ch4/((float)scale/1)) / (float)sampleFreq ;
 	Error_yaw 	= yaw_center - q_yaw	;
 	Errer_pitch = start_pitch + (ch2/scale) - q_pitch	;
 	Error_roll 	= start_roll  + (ch1/scale) - q_roll	;
@@ -710,11 +710,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     }
         ch1 = buf_uart[i];
         i++ ; 
-        ch2 = buf_uart[i];   
+        ch2 = -buf_uart[i];   
         i++ ; 
         ch3 = (buf_uart[i]+100)*12;  
         i++ ; 
-        ch4 = buf_uart[i];
+        ch4 = -buf_uart[i];
     
 //     HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);   
 }
