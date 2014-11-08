@@ -62,7 +62,7 @@ void EXTI4_15_IRQHandler(void)
   /* USER CODE BEGIN EXTI4_15_IRQn 1 */
 	iqs_count++;
 	
-	if(iqs_count > 2){
+	if(iqs_count > 3){
 		iqs_count=0 		;
 		Interrupt_call()	;
 	}

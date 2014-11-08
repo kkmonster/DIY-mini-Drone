@@ -54,7 +54,7 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-#define pre_ble_ct 5.0f 
+#define pre_ble_ct                  (int8_t)8
 #define beta                        0.1f  
 #define ACCELEROMETER_SENSITIVITY   16384.0f  
 #define GYROSCOPE_SENSITIVITY       131.07f 
@@ -561,9 +561,10 @@ void Drive_motor_output(void)
 }
 void Interrupt_call(void)
 {
-//		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
-		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
-	
+
+//		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
+    
+        HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);    
 		/* Read data from sensor */
 		MPU6050_GetRawAccelGyro();
 	
@@ -572,12 +573,7 @@ void Interrupt_call(void)
 		/* Controller */
 		PD_controller();
     
-		if( ch3 > 100 ){
-			
-			Drive_motor_output();
-            
-		}else{
-        
+		if( ch3 < 100 ){        
 			motor_A=0;
 			motor_B=0;
 			motor_C=0;
@@ -590,9 +586,9 @@ void Interrupt_call(void)
             q4=0;
             q_yaw=0;}
 			yaw_center=0;
-			Drive_motor_output();
 		}
-
+        
+    Drive_motor_output();
 
         
     /* Sent & eceive data from Bluetooth serial */
@@ -607,8 +603,8 @@ void Interrupt_call(void)
 //    T_center_minus -= 0.25 ; 
 //    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
 //    HAL_ADC_Start(&hadc);
-	
-//	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
+
+    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_RESET);    
 
 }
 void ahrs(void)
@@ -703,10 +699,13 @@ void ahrs(void)
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
  
     HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_1);
-    
+//    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);      
     int8_t i=0;
     while(buf_uart[i++] != 120 ){
-           if (i>5) return;
+           if (i>5){
+//              HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET); 
+               return;
+           }
        
     }
         ch1 = buf_uart[i];
@@ -716,6 +715,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         ch3 = (buf_uart[i]+100)*12;  
         i++ ; 
         ch4 = buf_uart[i];
+    
+//     HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);   
 }
     
 
