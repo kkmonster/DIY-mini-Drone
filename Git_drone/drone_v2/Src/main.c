@@ -515,7 +515,7 @@ void PD_controller(void)
 	float Buf_D_Errer_pitch=Errer_pitch;
 	float Buf_D_Error_roll=Error_roll; 
      
-    T_center   = (ch3*3) + ((t_compensate*t_compen) + T_center_minus);
+    T_center   = (ch3) + ((t_compensate*t_compen) + T_center_minus);
 
 	yaw_center +=((float)ch4/((float)scale/1)) / (float)sampleFreq ;
 	Error_yaw 	= yaw_center - q_yaw	;
@@ -599,10 +599,10 @@ void Interrupt_call(void)
     pre_ble--;    
     // read battery voltage
     
-//	battery_voltage = HAL_ADC_GetValue(&hadc);
-//    T_center_minus -= 0.25 ; 
-//    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
-//    HAL_ADC_Start(&hadc);
+	battery_voltage = HAL_ADC_GetValue(&hadc);
+    T_center_minus -= 0.25 ; 
+    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
+    HAL_ADC_Start(&hadc);
 
     HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_RESET);    
 
@@ -701,20 +701,21 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
     HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_1);
 //    HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);      
     int8_t i=0;
-    while(buf_uart[i++] != 120 ){
+    while(buf_uart[i++] != 125 ){
            if (i>5){
 //              HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET); 
                return;
            }
        
     }
-        ch1 = buf_uart[i];
+        ch1 = -buf_uart[i];
         i++ ; 
         ch2 = -buf_uart[i];   
         i++ ; 
-        ch3 = (buf_uart[i]+100)*12;  
+        ch3 = buf_uart[i];  
+//        ch3 = (buf_uart[i]+120)*10;  
         i++ ; 
-        ch4 = -buf_uart[i];
+        ch4 = buf_uart[i];
     
 //     HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);   
 }
