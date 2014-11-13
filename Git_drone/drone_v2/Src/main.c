@@ -64,19 +64,19 @@ UART_HandleTypeDef huart1;
 #define battary_low_level           2370.0f                 // 1v = ~846   @ 2.8 v = 2368
 #define scale                       12.0f                    // scale sppm
 #define t_compen                    0.45f                   // 0-1 for pitch roll compensate
-#define y_compen                    0.45f                   // 0-1 for yaw compensate
+#define y_compen                    0.25f                   // 0-1 for yaw compensate
 
 #define Kp_yaw      7.59f
 #define Ki_yaw      0.5f
-#define Kd_yaw      1.4f
+#define Kd_yaw      1.35f
 
 #define Kp_pitch	2.65f
 #define Ki_pitch    0.5f
-#define Kd_pitch    1.19f
+#define Kd_pitch    1.14f
 
 #define Kp_roll	    2.65f
 #define Ki_roll  	0.5f
-#define Kd_roll  	0.93f
+#define Kd_roll  	0.89f
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
 float q_yaw, q_pitch, q_roll;                                       // States value
@@ -96,7 +96,7 @@ uint16_t battery_voltage =0;
 /* USER CODE for SPPM Receiver  */
 uint8_t    reset_q =0 ;
 int16_t    tmp_Ch =0 ;
-int16_t    Channel[10]={0} ;
+int16_t    Channel[10]={0,0,0,-400,0,0,0,0,0,0} ;
 int16_t     ch1=0,ch2=0,ch3=-400,ch4=0;
 int8_t      Ch_count = 0 ;
 int8_t      buf_uart[10]={0};	     // buffer uart
@@ -459,7 +459,7 @@ void Initial_MPU6050(void)
 			 //    SetSleepModeStatus(DISABLE)
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 			//			SetDLPF(MPU6050_DLPF_BW_5)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_188);
+			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_98);
 			
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 				
@@ -534,8 +534,13 @@ volatile void PID_controller(void)
 	float Buf_D_Errer_pitch=Errer_pitch;
 	float Buf_D_Error_roll=Error_roll; 
      
-    T_center   = (ch3*3) + ((t_compensate*t_compen) + T_center_minus);
+    T_center   = (ch3*3) + T_center_minus;
 
+    if (  q_pitch*q_pitch < 900 && q_roll*q_roll < 900)
+    {
+    T_center += t_compensate*t_compen;
+    }
+    
 	yaw_center +=((float)ch4/(scale/6))/sampleFreq     ;
 
 	Error_yaw 	= yaw_center - q_yaw	;
@@ -723,16 +728,14 @@ volatile void ahrs(void)
 	y_pitch =  2*(q3*q4 + q1*q2);
     
 	float x =  2*(0.5 - q2*q2 - q3*q3);
-    
-    
-			q_pitch = atan2 (y_pitch,x)* -180.0f / M_PI;
-            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf((y_pitch-y0_pitch)*(y_pitch-y0_pitch)+x*x)); // pitch angle compensate
-    
-            
-			y_roll = -2*(q2*q4 - q1*q3)* -180.0f / M_PI;	;
-            t_compensate *= (1 + (y_roll - y0_roll));       // roll angle compensate            
 
-            
+			q_pitch = atan2 (y_pitch,x)* -180.0f / M_PI;
+            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
+
+			y_roll = -2*(q2*q4 - q1*q3)	;
+            q_roll = asinf(y_roll)* -180.0f / M_PI;
+            t_compensate *= (1 + (y_roll - y0_roll));       // roll angle compensate            
+  
             if(t_compensate < 0) t_compensate *= -1.0f ; // +value
  
             q_yaw   += gz/sampleFreq * 180.0f / M_PI ;
