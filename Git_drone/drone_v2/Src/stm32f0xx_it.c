@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * @file    stm32f0xx_it.c
-  * @date    26/10/2014 01:42:53
+  * @date    13/11/2014 14:11:57
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
@@ -39,13 +39,29 @@
 
 int8_t iqs_count= 0 ;
 
-
+extern void Interrupt_call(void);
+extern void Read_SPPM(void);
 /* USER CODE END 0 */
 /* External variables --------------------------------------------------------*/
 
 /******************************************************************************/
 /*            Cortex-M0 Processor Interruption and Exception Handlers         */ 
 /******************************************************************************/
+
+/**
+* @brief This function handles EXTI Line 0 and Line 1 interrupts.
+*/
+void EXTI0_1_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI0_1_IRQn 0 */
+
+  /* USER CODE END EXTI0_1_IRQn 0 */
+  HAL_NVIC_ClearPendingIRQ(EXTI0_1_IRQn);
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
+  /* USER CODE BEGIN EXTI0_1_IRQn 1 */
+    Read_SPPM();
+  /* USER CODE END EXTI0_1_IRQn 1 */
+}
 
 /**
 * @brief This function handles EXTI Line 4 to 15 interrupts.
@@ -82,7 +98,6 @@ void SysTick_Handler(void)
 
   /* USER CODE END SysTick_IRQn 1 */
 }
-
 
 /* USER CODE BEGIN 1 */
 

@@ -1,7 +1,7 @@
 /**
   ******************************************************************************
   * File Name          : main.c
-  * Date               : 26/10/2014 01:42:54
+  * Date               : 13/11/2014 14:11:59
   * Description        : Main program body
   ******************************************************************************
   *
@@ -110,7 +110,6 @@ int16_t     motor_A=0, motor_B=0, motor_C=0, motor_D=0 ;// Motors output value
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
-
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC_Init(void);
@@ -278,7 +277,7 @@ void MX_ADC_Init(void)
   hadc.Init.LowPowerAutoWait = DISABLE;
   hadc.Init.LowPowerAutoPowerOff = DISABLE;
   hadc.Init.ContinuousConvMode = DISABLE;
-  hadc.Init.DiscontinuousConvMode = ENABLE;
+  hadc.Init.DiscontinuousConvMode = DISABLE;
   hadc.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc.Init.DMAContinuousRequests = DISABLE;
   hadc.Init.Overrun = OVR_DATA_PRESERVED;
@@ -286,7 +285,7 @@ void MX_ADC_Init(void)
 
     /**Configure for the selected ADC regular channel to be converted. 
     */
-  sConfig.Channel = ADC_CHANNEL_0;
+  sConfig.Channel = ADC_CHANNEL_1;
   sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
   HAL_ADC_ConfigChannel(&hadc, &sConfig);
 
@@ -397,7 +396,7 @@ void MX_USART1_UART_Init(void)
   huart1.Init.Parity = UART_PARITY_NONE;
   huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_8;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
   huart1.Init.OneBitSampling = UART_ONEBIT_SAMPLING_DISABLED ;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   HAL_UART_Init(&huart1);
@@ -428,13 +427,16 @@ void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA1 PA5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  /*Configure GPIO pins : PA0 PA5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI0_1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);
+
   HAL_NVIC_SetPriority(EXTI4_15_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
 
@@ -587,8 +589,8 @@ volatile void Drive_motor_output(void)
 
 	TIM3 ->CCR1 = motor_D ;
 	TIM3 ->CCR2 = motor_A ;
-	TIM3 ->CCR4 = motor_C ;
-	TIM14->CCR1 = motor_B ;
+	TIM3 ->CCR4 = motor_B ;
+	TIM14->CCR1 = motor_C ;
 }
 volatile void Interrupt_call(void)
 {
@@ -631,12 +633,12 @@ volatile void Interrupt_call(void)
         
 	    ch1=Channel[1];
 		ch2=Channel[2];
-		ch3=Channel[3];
+		ch3=Channel[3]+400.0f;
 		ch4=Channel[4];
 
         
 //	  /* Sent & eceive data from Bluetooth serial */
-	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
+//	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
         
     // read battery voltage
     
@@ -654,7 +656,7 @@ volatile void Read_SPPM(void)
 	tmp_Ch = TIM16->CNT ;
 	TIM16->CNT = 0 ;
 	if (tmp_Ch > 3000)Ch_count = 0;
-	Channel[Ch_count] = tmp_Ch ;
+	Channel[Ch_count] = tmp_Ch -1510.0f ;
 
 }
 volatile void ahrs(void)
