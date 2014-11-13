@@ -55,28 +55,28 @@ UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 
-const float beta                        =0.1     ;
-const float ACCELEROMETER_SENSITIVITY   =16384   ;
-const float GYROSCOPE_SENSITIVITY       =131.07  ;
-const float M_PI                        =3.14159265359;	    
-const float sampleFreq                  =250     ; 			    // 250 hz sample rate!   
-const float limmit_I                    =300     ;
-const float battary_low_level           =2370    ;             // 1v = ~846   @ 2.8 v = 2368
-const float scale                       =15      ;              // scale sppm
-const float t_compen                    =0.45    ;               // 0-1 for pitch roll compensate
-const float y_compen                    =0.45    ;                // 0-1 for yaw compensate
+#define beta                        0.1f     
+#define ACCELEROMETER_SENSITIVITY   16384.0f  
+#define GYROSCOPE_SENSITIVITY       131.07f  
+#define M_PI                        3.14159265359f	    
+#define sampleFreq                  250.0f     			    // 250 hz sample rate!   
+#define limmit_I                    300.0f     
+#define battary_low_level           2370.0f                 // 1v = ~846   @ 2.8 v = 2368
+#define scale                       12.0f                    // scale sppm
+#define t_compen                    0.45f                   // 0-1 for pitch roll compensate
+#define y_compen                    0.45f                   // 0-1 for yaw compensate
 
-const float Kp_yaw      =7.59;
-const float Ki_yaw      =0.5;
-const float Kd_yaw      =1.4;
+#define Kp_yaw      7.59f
+#define Ki_yaw      0.5f
+#define Kd_yaw      1.4f
 
-const float Kp_pitch	=2.65;
-const float Ki_pitch    =0.5;
-const float Kd_pitch    =1.19;
+#define Kp_pitch	2.65f
+#define Ki_pitch    0.5f
+#define Kd_pitch    1.19f
 
-const float Kp_roll	    =2.65;
-const float Ki_roll  	=0.5;
-const float Kd_roll  	=0.93;
+#define Kp_roll	    2.65f
+#define Ki_roll  	0.5f
+#define Kd_roll  	0.93f
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
 float q_yaw, q_pitch, q_roll;                                       // States value
@@ -97,7 +97,7 @@ uint16_t battery_voltage =0;
 uint8_t    reset_q =0 ;
 int16_t    tmp_Ch =0 ;
 int16_t    Channel[10]={0} ;
-int16_t     ch1=0,ch2=0,ch3=0,ch4=0,ch5=0,ch6=0,ch7=0,ch8=0,ch9=0 ;
+int16_t     ch1=0,ch2=0,ch3=-400,ch4=0;
 int8_t      Ch_count = 0 ;
 int8_t      buf_uart[10]={0};	     // buffer uart
 int16_t     AccelGyro[6]={0};       // RAW states value
@@ -201,20 +201,20 @@ int main(void)
 		gx_diff /= 20;
 		gy_diff /= 20;
 		gz_diff /= 20;
-	
-	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);  // interrupt from imu
-	
+
     HAL_Delay(300); // read start angle
     
-    start_pitch = q_pitch ; 
-    start_roll  = q_roll  ;
+    start_pitch = q_pitch; 
+    start_roll  = q_roll;
     
-    y0_roll = y_roll ;
+    y0_roll  = y_roll ;
     y0_pitch = y_pitch ;
     
     reset_q = 1;
-    
-	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
+    HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
+    HAL_Delay(200);
+    HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);  // interrupt from imu
+
 
   /* Infinite loop */
   while (1)
@@ -459,7 +459,7 @@ void Initial_MPU6050(void)
 			 //    SetSleepModeStatus(DISABLE)
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 			//			SetDLPF(MPU6050_DLPF_BW_5)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_98);
+			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_188);
 			
 			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 				
@@ -566,10 +566,10 @@ volatile void PID_controller(void)
     float yaw_compensate = Del_yaw * y_compen ;
     if (yaw_compensate < 0)  yaw_compensate *= -1;
 
-	motor_A=	T_center +Del_pitch	-Del_roll -Del_yaw + yaw_compensate;
-	motor_B=	T_center +Del_pitch	+Del_roll +Del_yaw + yaw_compensate;
-	motor_C=	T_center -Del_pitch	+Del_roll -Del_yaw + yaw_compensate;
-	motor_D=	T_center -Del_pitch	-Del_roll +Del_yaw + yaw_compensate;
+	motor_A = T_center +Del_pitch	-Del_roll -Del_yaw + yaw_compensate;
+	motor_B = T_center +Del_pitch	+Del_roll +Del_yaw + yaw_compensate;
+	motor_C = T_center -Del_pitch	+Del_roll -Del_yaw + yaw_compensate;
+	motor_D = T_center -Del_pitch	-Del_roll +Del_yaw + yaw_compensate;
 	
 	// limmit output max, min
 	if(motor_A < 1) motor_A = 0 ;
@@ -595,7 +595,7 @@ volatile void Drive_motor_output(void)
 volatile void Interrupt_call(void)
 {
 		HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_SET);
-		HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
+
 	
 		/* Read data from sensor */
 		MPU6050_GetRawAccelGyro(AccelGyro);
@@ -605,11 +605,7 @@ volatile void Interrupt_call(void)
 		/* Controller */
 		PID_controller();
     
-		if( ch3 > 100 ){
-			
-			Drive_motor_output();
-            
-		}else{
+		if( ch3 < 100 ){
             
 			Sum_Error_yaw=0;
 			Sum_Error_pitch=0;
@@ -626,9 +622,10 @@ volatile void Interrupt_call(void)
             q4=0;
             q_yaw=0;}
 			yaw_center=0;
-			Drive_motor_output();
+			
 		}
-		
+        
+		Drive_motor_output();
 		// update sppm read
         
 	    ch1=Channel[1];
@@ -636,9 +633,6 @@ volatile void Interrupt_call(void)
 		ch3=Channel[3]+400.0f;
 		ch4=Channel[4];
 
-        
-//	  /* Sent & eceive data from Bluetooth serial */
-//	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
         
     // read battery voltage
     
@@ -652,11 +646,13 @@ volatile void Interrupt_call(void)
 }
 volatile void Read_SPPM(void)
 {
+    HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
 	Ch_count++;
 	tmp_Ch = TIM16->CNT ;
 	TIM16->CNT = 0 ;
 	if (tmp_Ch > 3000)Ch_count = 0;
 	Channel[Ch_count] = tmp_Ch -1510.0f ;
+    
 
 }
 volatile void ahrs(void)
@@ -677,7 +673,7 @@ volatile void ahrs(void)
 
 	if(!((ax == 0) && (ay == 0) && (az == 0))) {
 		// Normalise 
-		Norm = sqrt(ax * ax + ay * ay + az * az);
+		Norm = sqrtf(ax * ax + ay * ay + az * az);
 		ax /= Norm;
 		ay /= Norm;
 		az /= Norm;   
@@ -701,7 +697,7 @@ volatile void ahrs(void)
 		float s3 = 4 * q1q1 * q3 + _2q1 * ax + _4q3 * q4q4 - _2q4 * ay - _4q3 + _8q3 * q2q2 + _8q3 * q3q3 + _4q3 * az;
 		float s4 = 4 * q2q2 * q4 - _2q2 * ax + 4 * q3q3 * q4 - _2q3 * ay;
 		// Normalise 
-		Norm = sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
+		Norm = sqrtf(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
 		s1 /= Norm;
 		s2 /= Norm;
 		s3 /= Norm;
@@ -718,27 +714,28 @@ volatile void ahrs(void)
 	q3 += q3_dot / sampleFreq;
 	q4 += q4_dot / sampleFreq;
 	// Normalise
-	Norm = sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4 );
+	Norm = sqrtf(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4 );
 	q1 /= Norm;
 	q2 /= Norm;
 	q3 /= Norm;
 	q4 /= Norm;
 	// convert to euler
 	y_pitch =  2*(q3*q4 + q1*q2);
+    
 	float x =  2*(0.5 - q2*q2 - q3*q3);
     
-			q_pitch = atan2 (y_pitch,x) * -180 / M_PI;
     
-            t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
+			q_pitch = atan2 (y_pitch,x)* -180.0f / M_PI;
+            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf((y_pitch-y0_pitch)*(y_pitch-y0_pitch)+x*x)); // pitch angle compensate
     
-			y_roll = -2*(q2*q4 - q1*q3);
-			q_roll = asin(y_roll) * -180 / M_PI;	
-
-            t_compensate *= (1+( y_roll - y0_roll)) ;       // roll angle compensate
             
-            if(t_compensate < 0) t_compensate*=-1 ; // +value
+			y_roll = -2*(q2*q4 - q1*q3)* -180.0f / M_PI;	;
+            t_compensate *= (1 + (y_roll - y0_roll));       // roll angle compensate            
+
+            
+            if(t_compensate < 0) t_compensate *= -1.0f ; // +value
  
-            q_yaw   += gz/sampleFreq * 180 / M_PI ;
+            q_yaw   += gz/sampleFreq * 180.0f / M_PI ;
 }
 
 
