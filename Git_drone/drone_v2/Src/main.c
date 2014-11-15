@@ -61,25 +61,25 @@ UART_HandleTypeDef huart1;
 #define M_PI                        3.14159265359f	    
 #define sampleFreq                  250.0f     			    // 250 hz sample rate!   
 #define limmit_I                    300.0f     
-#define battary_low_level           2370.0f                 // 1v = ~846   @ 2.8 v = 2368
+#define battary_low_level           2500.0f                 // 1v = ~846   @ 2.8 v = 2368
 #define scale                       12.0f                    // scale sppm
 #define t_compen                    0.45f                   // 0-1 for pitch roll compensate
 #define y_compen                    0.25f                   // 0-1 for yaw compensate
 
 #define Kp_yaw      7.59f
-#define Ki_yaw      0.5f
-#define Kd_yaw      1.35f
+#define Ki_yaw      0.00f
+#define Kd_yaw      1.6f
 
 #define Kp_pitch	2.65f
 #define Ki_pitch    0.5f
-#define Kd_pitch    1.14f
+#define Kd_pitch    1.24f
 
 #define Kp_roll	    2.65f
 #define Ki_roll  	0.5f
-#define Kd_roll  	0.89f
+#define Kd_roll  	0.99f
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
-float q_yaw, q_pitch, q_roll;                                       // States value
+float q_yaw, q_pitch, q_roll;                                            // States value
 float q1=1, q2=0, q3=0, q4=0 ;
 float gx_diff = 0, gy_diff=0, gz_diff=0;
 float start_pitch=0, start_roll=0;
@@ -187,28 +187,48 @@ int main(void)
 	HAL_Delay(1000);
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);
-	uint8_t xxx = 20;
-	while (xxx > 0){
-		MPU6050_GetRawAccelGyro(AccelGyro);
-
-		gx_diff += AccelGyro[3];
-		gy_diff += AccelGyro[4];
-		gz_diff += AccelGyro[5];
-
-        xxx--;
-		HAL_Delay(100);
-	}
-		gx_diff /= 20;
-		gy_diff /= 20;
-		gz_diff /= 20;
-
-    HAL_Delay(300); // read start angle
     
-    start_pitch = q_pitch; 
-    start_roll  = q_roll;
     
-    y0_roll  = y_roll ;
-    y0_pitch = y_pitch ;
+    
+	uint16_t xxx = 20;
+
+	while (xxx > 0)
+        {
+            MPU6050_GetRawAccelGyro(AccelGyro);
+
+            gx_diff += AccelGyro[3];
+            gy_diff += AccelGyro[4];
+            gz_diff += AccelGyro[5];
+            HAL_Delay(10);
+            ahrs();
+            xxx--;
+        }
+    
+    gx_diff /= 20;
+    gy_diff /= 20;
+    gz_diff /= 20;
+
+    xxx = 1000;
+	while (xxx > 0)
+        {
+            MPU6050_GetRawAccelGyro(AccelGyro);
+            
+            ahrs();
+            xxx--;
+            HAL_Delay(4);
+        }
+
+            start_pitch = q_pitch; 
+            start_roll  = q_roll;
+            
+            y0_roll  = y_roll ;
+            y0_pitch = y_pitch ;
+
+//        
+//    start_pitch /= 10;
+//    start_roll /= 10;
+//    y0_roll /= 10;
+//    y0_pitch /= 10;
     
     reset_q = 1;
     HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
@@ -536,10 +556,10 @@ volatile void PID_controller(void)
      
     T_center   = (ch3*3) + T_center_minus;
 
-    if (  q_pitch*q_pitch < 900 && q_roll*q_roll < 900)
-    {
-    T_center += t_compensate*t_compen;
-    }
+//    if (  q_pitch*q_pitch < 900 && q_roll*q_roll < 900)
+//    {
+//    T_center += t_compensate*t_compen;
+//    }
     
 	yaw_center +=((float)ch4/(scale/6))/sampleFreq     ;
 
@@ -571,10 +591,15 @@ volatile void PID_controller(void)
     float yaw_compensate = Del_yaw * y_compen ;
     if (yaw_compensate < 0)  yaw_compensate *= -1;
 
-	motor_A = T_center +Del_pitch	-Del_roll -Del_yaw + yaw_compensate;
-	motor_B = T_center +Del_pitch	+Del_roll +Del_yaw + yaw_compensate;
-	motor_C = T_center -Del_pitch	+Del_roll -Del_yaw + yaw_compensate;
-	motor_D = T_center -Del_pitch	-Del_roll +Del_yaw + yaw_compensate;
+//	motor_A = T_center +Del_pitch	-Del_roll -Del_yaw + yaw_compensate;
+//	motor_B = T_center +Del_pitch	+Del_roll +Del_yaw + yaw_compensate;
+//	motor_C = T_center -Del_pitch	+Del_roll -Del_yaw + yaw_compensate;
+//	motor_D = T_center -Del_pitch	-Del_roll +Del_yaw + yaw_compensate;
+
+	motor_A = T_center +Del_pitch	-Del_roll -Del_yaw ;
+	motor_B = T_center +Del_pitch	+Del_roll +Del_yaw ;
+	motor_C = T_center -Del_pitch	+Del_roll -Del_yaw ;
+	motor_D = T_center -Del_pitch	-Del_roll +Del_yaw ;
 	
 	// limmit output max, min
 	if(motor_A < 1) motor_A = 0 ;
@@ -631,6 +656,7 @@ volatile void Interrupt_call(void)
 		}
         
 		Drive_motor_output();
+        
 		// update sppm read
         
 	    ch1=Channel[1];
@@ -642,7 +668,7 @@ volatile void Interrupt_call(void)
     // read battery voltage
     
 	battery_voltage = HAL_ADC_GetValue(&hadc);
-    T_center_minus -= 0.25 ; 
+    T_center_minus -= 20 ; 
     if( battery_voltage > battary_low_level )   T_center_minus = 0; 
     HAL_ADC_Start(&hadc);
 	
@@ -730,13 +756,14 @@ volatile void ahrs(void)
 	float x =  2*(0.5 - q2*q2 - q3*q3);
 
 			q_pitch = atan2 (y_pitch,x)* -180.0f / M_PI;
-            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
+//            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
 
 			y_roll = -2*(q2*q4 - q1*q3)	;
             q_roll = asinf(y_roll)* -180.0f / M_PI;
-            t_compensate *= (1 + (y_roll - y0_roll));       // roll angle compensate            
+            
+//           t_compensate *= (1 + (y_roll - y0_roll));       // roll angle compensate            
   
-            if(t_compensate < 0) t_compensate *= -1.0f ; // +value
+//            if(t_compensate < 0) t_compensate *= -1.0f ; // +value
  
             q_yaw   += gz/sampleFreq * 180.0f / M_PI ;
 }
