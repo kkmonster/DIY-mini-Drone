@@ -67,15 +67,15 @@ UART_HandleTypeDef huart1;
 #define y_compen                    0.45f         // 0-1 for yaw compensate
 
 #define Kp_yaw      7.59f
-#define Ki_yaw      0.5f
+#define Ki_yaw      0.1f
 #define Kd_yaw      1.4f
 
 #define Kp_pitch	2.65f
-#define Ki_pitch    0.5f
+#define Ki_pitch    0.1f
 #define Kd_pitch    1.19f
 
 #define Kp_roll	    2.65f
-#define Ki_roll  	0.5f
+#define Ki_roll  	0.1f
 #define Kd_roll  	0.93f
 
 
@@ -201,7 +201,7 @@ int main(void)
 	
 	HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);  // interrupt from imu
 	
-    HAL_Delay(300); // read start angle
+    HAL_Delay(5000); // read start angle
     
     start_pitch = q_pitch ; 
     start_roll  = q_roll  ;
@@ -211,7 +211,7 @@ int main(void)
     
     reset_q = 1;
     
-	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
+//	HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
     
 
 
@@ -590,13 +590,13 @@ void Interrupt_call(void)
         
     Drive_motor_output();
 
-        
+    if(HAL_UART_GetState(&huart1) ==  HAL_UART_STATE_READY )    
     /* Sent & eceive data from Bluetooth serial */
-    if(pre_ble ==0){
-    pre_ble = pre_ble_ct ;    
+//    if(pre_ble ==0){
+//    pre_ble = pre_ble_ct ;    
 	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
-    }
-    pre_ble--;    
+//    }
+//    pre_ble--;    
     // read battery voltage
     
 	battery_voltage = HAL_ADC_GetValue(&hadc);
@@ -631,7 +631,7 @@ void ahrs(void)
 
 //	if(!((ax == 0) && (ay == 0) && (az == 0))) {
 		// Normalise 
-		Norm = sqrt(ax * ax + ay * ay + az * az);
+		Norm = sqrtf(ax * ax + ay * ay + az * az);
 		ax /= Norm;
 		ay /= Norm;
 		az /= Norm;   
@@ -656,7 +656,7 @@ void ahrs(void)
 		float s3 = 4 * q1 * q1 * q3 + 2 * q1 * ax + 4 * q3 * q4 * q4 - 2 * q4 * ay - 4 * q3 + 8 * q3 * q2 * q2 + 8 * q3 * q3 * q3 + 4 * q3 * az;
 		float s4 = 4 * q2 * q2 * q4 - 2 * q2 * ax + 4 * q3 * q3 * q4 - 2 * q3 * ay;
 		// Normalise 
-		Norm = sqrt(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
+		Norm = sqrtf(s1 * s1 + s2 * s2 + s3 * s3 + s4 * s4); // normalise step magnitude
 		s1 /= Norm;
 		s2 /= Norm;
 		s3 /= Norm;
@@ -673,7 +673,7 @@ void ahrs(void)
 	q3 += q3_dot / (float)sampleFreq;
 	q4 += q4_dot / (float)sampleFreq;
 	// Normalise
-	Norm = sqrt(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4 );
+	Norm = sqrtf(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4 );
 	q1 /= Norm;
 	q2 /= Norm;
 	q3 /= Norm;
@@ -682,14 +682,14 @@ void ahrs(void)
 	y_pitch =  2*(q3*q4 + q1*q2);
 	Norm =  2*(0.5 - q2*q2 - q3*q3);
     
-			q_pitch = atan2 (y_pitch,Norm) * -180 / M_PI;
+			q_pitch = atan2f(y_pitch,Norm) * -180 / M_PI;
     
-           t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
+//           t_compensate  = T_center * (y_pitch-y0_pitch) ; // pitch angle compensate
     
 			y_roll = -2*(q2*q4 - q1*q3);
-			q_roll = asin(y_roll) * -180 / M_PI;	
+			q_roll = asinf(y_roll) * -180 / M_PI;	
 
-           t_compensate *= (1+( y_roll - y0_roll)) ;       // roll angle compensate
+//           t_compensate *= (1+( y_roll - y0_roll)) ;       // roll angle compensate
             
             if(t_compensate < 0) t_compensate*=-1 ; // +value
  
@@ -712,8 +712,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
         i++ ; 
         ch2 = -buf_uart[i];   
         i++ ; 
-        ch3 = buf_uart[i];  
-//        ch3 = (buf_uart[i]+120)*10;  
+//        ch3 = buf_uart[i];  
+        ch3 = (buf_uart[i]+120)*10;  
         i++ ; 
         ch4 = buf_uart[i];
     
