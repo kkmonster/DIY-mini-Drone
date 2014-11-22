@@ -63,7 +63,7 @@ UART_HandleTypeDef huart1;
 #define limmit_I                    300.0f     
 #define battary_low_level           2500.0f                 // 1v = ~846   @ 2.8 v = 2368
 #define scale                       12.0f                    // scale sppm
-#define t_compen                    0.45f                   // 0-1 for pitch roll compensate
+#define t_compen                    0.25f                   // 0-1 for pitch roll compensate
 #define y_compen                    0.25f                   // 0-1 for yaw compensate
 
 #define Kp_yaw      7.59f
