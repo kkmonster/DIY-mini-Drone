@@ -67,15 +67,15 @@ UART_HandleTypeDef huart1;
 #define y_compen                    0.25f                   // 0-1 for yaw compensate
 
 #define Kp_yaw      7.59f
-#define Ki_yaw      0.00f
+#define Ki_yaw      0.1f
 #define Kd_yaw      1.6f
 
 #define Kp_pitch	2.65f
-#define Ki_pitch    0.5f
+#define Ki_pitch    0.1f
 #define Kd_pitch    1.24f
 
 #define Kp_roll	    2.65f
-#define Ki_roll  	0.5f
+#define Ki_roll  	0.1f
 #define Kd_roll  	0.99f
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
@@ -91,6 +91,7 @@ float Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for r
 float t_compensate = 0;
 float T_center_minus = 0;
 float y_roll=0, y_pitch=0, y0_roll=0, y0_pitch=0 ; 
+float test;
 uint16_t battery_voltage =0;
 
 /* USER CODE for SPPM Receiver  */
@@ -208,29 +209,26 @@ int main(void)
     gy_diff /= 20;
     gz_diff /= 20;
 
-    xxx = 1000;
+    xxx = 2000;
 	while (xxx > 0)
         {
             MPU6050_GetRawAccelGyro(AccelGyro);
             
             ahrs();
             xxx--;
-            HAL_Delay(4);
+            HAL_Delay(2);
         }
 
             start_pitch = q_pitch; 
             start_roll  = q_roll;
-            
-            y0_roll  = y_roll ;
             y0_pitch = y_pitch ;
+            y0_roll  = y_roll ;
+            
 
-//        
-//    start_pitch /= 10;
-//    start_roll /= 10;
-//    y0_roll /= 10;
-//    y0_pitch /= 10;
+
     
-    reset_q = 1;
+    reset_q = 1; // Enable Reset q if Ch3 < 5%
+        
     HAL_NVIC_EnableIRQ(EXTI0_1_IRQn);  // interrupt from sppm
     HAL_Delay(200);
     HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);  // interrupt from imu
@@ -550,16 +548,16 @@ void MPU6050_GetRawAccelGyro(int16_t* AccelGyro)
 volatile void PID_controller(void)
 {
 
-    float Buf_D_Error_yaw =Error_yaw;
-	float Buf_D_Errer_pitch=Errer_pitch;
-	float Buf_D_Error_roll=Error_roll; 
+    float Buf_D_Error_yaw   =Error_yaw;
+	float Buf_D_Errer_pitch =Errer_pitch;
+	float Buf_D_Error_roll  =Error_roll; 
      
     T_center   = (ch3*3) + T_center_minus;
 
-//    if (  q_pitch*q_pitch < 900 && q_roll*q_roll < 900)
-//    {
-//    T_center += t_compensate*t_compen;
-//    }
+    if (  q_pitch*q_pitch < 900 && q_roll*q_roll < 900)
+    {
+    T_center += t_compensate*t_compen;
+    }
     
 	yaw_center +=((float)ch4/(scale/6))/sampleFreq     ;
 
@@ -756,14 +754,15 @@ volatile void ahrs(void)
 	float x =  2*(0.5 - q2*q2 - q3*q3);
 
 			q_pitch = atan2 (y_pitch,x)* -180.0f / M_PI;
-//            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
+            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate            test  =((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
 
 			y_roll = -2*(q2*q4 - q1*q3)	;
             q_roll = asinf(y_roll)* -180.0f / M_PI;
-            
-//           t_compensate *= (1 + (y_roll - y0_roll));       // roll angle compensate            
-  
-//            if(t_compensate < 0) t_compensate *= -1.0f ; // +value
+            y_roll = y_roll - y0_roll ;
+            if(y_roll < 0) y_roll = -y_roll ;
+            t_compensate *= (1 + (y_roll));       // roll angle compensate            
+
+            if(t_compensate < 0) t_compensate = -t_compensate ; // +value
  
             q_yaw   += gz/sampleFreq * 180.0f / M_PI ;
 }
