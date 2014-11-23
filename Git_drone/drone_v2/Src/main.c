@@ -590,11 +590,15 @@ void Interrupt_call(void)
         
     Drive_motor_output();
 
-    if(HAL_UART_GetState(&huart1) ==  HAL_UART_STATE_READY )    
+    if(HAL_UART_GetState(&huart1) ==  HAL_UART_STATE_READY )
+    {
+       
     /* Sent & eceive data from Bluetooth serial */
 //    if(pre_ble ==0){
 //    pre_ble = pre_ble_ct ;    
-	HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
+        HAL_UART_Receive_IT(&huart1,(uint8_t*)buf_uart,10);
+    }
+    
 //    }
 //    pre_ble--;    
     // read battery voltage
