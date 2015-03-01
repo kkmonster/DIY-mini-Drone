@@ -178,7 +178,7 @@ int main(void)
 
 	Initial_MPU6050();
 	
-    HAL_TIM_Base_Start(&htim16);
+  HAL_TIM_Base_Start(&htim16);
 	
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim3,TIM_CHANNEL_2);
@@ -463,25 +463,28 @@ void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void Initial_MPU6050(void)
 	{
-
-				//    Reset to defalt 
-			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET_BIT, ENABLE);
-				//	  SetClockSource(MPU6050_CLOCK_PLL_XGYRO)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_CLKSEL_BIT, MPU6050_PWR1_CLKSEL_LENGTH, MPU6050_CLOCK_PLL_XGYRO);	
-				//    SetFullScaleGyroRange(MPU6050_GYRO_FS_250)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_CONFIG, MPU6050_GCONFIG_FS_SEL_BIT, MPU6050_GCONFIG_FS_SEL_LENGTH, MPU6050_GYRO_FS_250);
-				//    SetFullScaleAccelRange(MPU6050_ACCEL_FS_2)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_CONFIG, MPU6050_GCONFIG_FS_SEL_BIT, MPU6050_GCONFIG_FS_SEL_LENGTH, MPU6050_ACCEL_FS_2);
-				//    interupt(Enable)
-			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_INT_ENABLE, MPU6050_INTERRUPT_DATA_RDY_BIT, ENABLE);
-			 //    SetSleepModeStatus(DISABLE)
-			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
-			//			SetDLPF(MPU6050_DLPF_BW_5)
-			MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_98);
+		HAL_Delay(50); // for stability
+			//    Reset to defalt 
+		MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET_BIT, ENABLE);
+			//	  SetClockSource(MPU6050_CLOCK_PLL_XGYRO)
+		MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_CLKSEL_BIT, MPU6050_PWR1_CLKSEL_LENGTH, MPU6050_CLOCK_PLL_XGYRO);	
+			//    SetFullScaleGyroRange(MPU6050_GYRO_FS_250)
+		MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_CONFIG, MPU6050_GCONFIG_FS_SEL_BIT, MPU6050_GCONFIG_FS_SEL_LENGTH, MPU6050_GYRO_FS_250);
+			//    SetFullScaleAccelRange(MPU6050_ACCEL_FS_2)
+		MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_GYRO_CONFIG, MPU6050_GCONFIG_FS_SEL_BIT, MPU6050_GCONFIG_FS_SEL_LENGTH, MPU6050_ACCEL_FS_2);
+			//    interupt(Enable)
+		MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_INT_ENABLE, MPU6050_INTERRUPT_DATA_RDY_BIT, ENABLE);
+		 //    SetSleepModeStatus(DISABLE)
+		MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
+		//			SetDLPF(MPU6050_DLPF_BW_5)
+		MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_CONFIG, MPU6050_CFG_DLPF_CFG_BIT, MPU6050_CFG_DLPF_CFG_LENGTH, MPU6050_DLPF_BW_98);
+		
+	
+		HAL_Delay(50); // for stability
+	
+		MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
 			
-			MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_SLEEP_BIT, DISABLE);
-				
-			HAL_Delay(50); // for stability
+		HAL_Delay(50); // for stability
 }
 
 void MPU6050_WriteBits(uint8_t slaveAddr, uint8_t regAddr, uint8_t bitStart, uint8_t length, uint8_t data)
@@ -657,7 +660,7 @@ volatile void Interrupt_call(void)
         
 		// update sppm read
         
-	    ch1=Channel[1];
+	  ch1=Channel[1];
 		ch2=Channel[2];
 		ch3=Channel[3]+400.0f;
 		ch4=Channel[4];
@@ -753,7 +756,7 @@ volatile void ahrs(void)
     
 	float x =  2*(0.5 - q2*q2 - q3*q3);
 
-			q_pitch = atan2 (y_pitch,x)* -180.0f / M_PI;
+			q_pitch = atan2f (y_pitch,x)* -180.0f / M_PI;
             t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate            test  =((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
 
 			y_roll = -2*(q2*q4 - q1*q3)	;
