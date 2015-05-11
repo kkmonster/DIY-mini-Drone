@@ -66,23 +66,28 @@ UART_HandleTypeDef huart1;
 #define t_compen                    0.25f                   // 0-1 for pitch roll compensate
 #define y_compen                    0.25f                   // 0-1 for yaw compensate
 
+#define gx_diff 		 157
+#define gy_diff 		-112
+#define gz_diff 		 88
+
+#define start_pitch		1.9f
+#define start_roll		0.4f
+
 #define Kp_yaw      7.59f
 #define Ki_yaw      0.1f
 #define Kd_yaw      1.6f
 
-#define Kp_pitch	2.65f
+#define Kp_pitch		2.65f
 #define Ki_pitch    0.1f
 #define Kd_pitch    1.24f
 
 #define Kp_roll	    2.65f
-#define Ki_roll  	0.1f
-#define Kd_roll  	0.99f
+#define Ki_roll  		0.1f
+#define Kd_roll  		0.99f
 
 float Ref_yaw=0, Ref_pitch=0, Ref_roll=0 ;
 float q_yaw, q_pitch, q_roll;                                            // States value
 float q1=1, q2=0, q3=0, q4=0 ;
-float gx_diff = 0, gy_diff=0, gz_diff=0;
-float start_pitch=0, start_roll=0;
 float T_center =0, yaw_center=0;
 float Error_yaw=0, Errer_pitch=0, Error_roll=0; 						//States Error
 float Sum_Error_yaw=0, Sum_Error_pitch=0, Sum_Error_roll=0;             // Sum of error
@@ -91,7 +96,7 @@ float Del_yaw=0, Del_pitch=0, Del_roll=0;												// Delta states value for r
 float t_compensate = 0;
 float T_center_minus = 0;
 float y_roll=0, y_pitch=0, y0_roll=0, y0_pitch=0 ; 
-float test;
+
 uint16_t battery_voltage =0;
 
 /* USER CODE for SPPM Receiver  */
@@ -115,7 +120,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ADC_Init(void);
 static void MX_I2C1_Init(void);
-static void MX_TIM3_Init(void);
+static void MX_TIM3_Init(void); 
 static void MX_TIM14_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_USART1_UART_Init(void);
@@ -134,11 +139,12 @@ volatile void PID_controller(void);
 volatile void Drive_motor_output(void);
 volatile void Interrupt_call(void);
 volatile void ahrs(void);
+float Smooth_filter(float alfa, float new_data, float prev_data);
 //void ComplementaryFilter(int16_t AccelGyro[6], float *pitch, float *roll, float *yaw);
 //volatile void Read_Angle(void);
 
 /* USER CODE END PFP */
-
+ 
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
@@ -190,39 +196,9 @@ int main(void)
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_0,GPIO_PIN_SET);
     
     
-    
-	uint16_t xxx = 20;
-
-	while (xxx > 0)
-        {
-            MPU6050_GetRawAccelGyro(AccelGyro);
-
-            gx_diff += AccelGyro[3];
-            gy_diff += AccelGyro[4];
-            gz_diff += AccelGyro[5];
-            HAL_Delay(10);
-            ahrs();
-            xxx--;
-        }
-    
-    gx_diff /= 20;
-    gy_diff /= 20;
-    gz_diff /= 20;
-
-    xxx = 2000;
-	while (xxx > 0)
-        {
-            MPU6050_GetRawAccelGyro(AccelGyro);
-            
-            ahrs();
-            xxx--;
-            HAL_Delay(2);
-        }
-
-            start_pitch = q_pitch; 
-            start_roll  = q_roll;
-            y0_pitch = y_pitch ;
-            y0_roll  = y_roll ;
+   
+            y0_pitch 		= 0 ;
+            y0_roll  		= 0 ;
             
 
 
@@ -237,7 +213,7 @@ int main(void)
   /* Infinite loop */
   while (1)
   {
-
+		HAL_Delay(100);
   }
   /* USER CODE END 3 */
 
@@ -466,6 +442,7 @@ void Initial_MPU6050(void)
 		HAL_Delay(50); // for stability
 			//    Reset to defalt 
 		MPU6050_WriteBit(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_DEVICE_RESET_BIT, ENABLE);
+		HAL_Delay(50);
 			//	  SetClockSource(MPU6050_CLOCK_PLL_XGYRO)
 		MPU6050_WriteBits(MPU6050_DEFAULT_ADDRESS, MPU6050_RA_PWR_MGMT_1, MPU6050_PWR1_CLKSEL_BIT, MPU6050_PWR1_CLKSEL_LENGTH, MPU6050_CLOCK_PLL_XGYRO);	
 			//    SetFullScaleGyroRange(MPU6050_GYRO_FS_250)
@@ -551,7 +528,7 @@ void MPU6050_GetRawAccelGyro(int16_t* AccelGyro)
 volatile void PID_controller(void)
 {
 
-    float Buf_D_Error_yaw   =Error_yaw;
+  float Buf_D_Error_yaw   =Error_yaw;
 	float Buf_D_Errer_pitch =Errer_pitch;
 	float Buf_D_Error_roll  =Error_roll; 
      
@@ -618,10 +595,11 @@ volatile void PID_controller(void)
 volatile void Drive_motor_output(void)
 {
 
-	TIM3 ->CCR1 = motor_D ;
-	TIM3 ->CCR2 = motor_A ;
-	TIM3 ->CCR4 = motor_B ;
-	TIM14->CCR1 = motor_C ;
+	TIM3 ->CCR1 = motor_A ;
+	TIM3 ->CCR2 = motor_D ;
+	TIM3 ->CCR4 = motor_C ;
+	TIM14->CCR1 = motor_B ;
+	
 }
 volatile void Interrupt_call(void)
 {
@@ -636,7 +614,8 @@ volatile void Interrupt_call(void)
 		/* Controller */
 		PID_controller();
     
-		if( ch3 < 100 ){
+		if( ch3 < 100 )
+		{
             
 			Sum_Error_yaw=0;
 			Sum_Error_pitch=0;
@@ -663,29 +642,28 @@ volatile void Interrupt_call(void)
 	  ch1=Channel[1];
 		ch2=Channel[2];
 		ch3=Channel[3]+400.0f;
-		ch4=Channel[4];
+		ch4=Channel[4]; 
 
         
     // read battery voltage
     
 	battery_voltage = HAL_ADC_GetValue(&hadc);
-    T_center_minus -= 20 ; 
-    if( battery_voltage > battary_low_level )   T_center_minus = 0; 
-    HAL_ADC_Start(&hadc);
+	T_center_minus -= 20 ; 
+	if( battery_voltage > battary_low_level )   T_center_minus = 0; 
+	HAL_ADC_Start(&hadc);
 	
 	HAL_GPIO_WritePin(GPIOF,GPIO_PIN_1,GPIO_PIN_RESET);
 
 }
 volatile void Read_SPPM(void)
 {
-    HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
+	HAL_GPIO_TogglePin(GPIOF,GPIO_PIN_0);    
 	Ch_count++;
 	tmp_Ch = TIM16->CNT ;
 	TIM16->CNT = 0 ;
 	if (tmp_Ch > 3000)Ch_count = 0;
 	Channel[Ch_count] = tmp_Ch -1510.0f ;
     
-
 }
 volatile void ahrs(void)
 {
@@ -757,23 +735,29 @@ volatile void ahrs(void)
 	float x =  2*(0.5 - q2*q2 - q3*q3);
 
 			q_pitch = atan2f (y_pitch,x)* -180.0f / M_PI;
-            t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate            test  =((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
+      t_compensate  = T_center * ((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate            test  =((y_pitch-y0_pitch)/sqrtf(((y_pitch*y_pitch))+(x*x))); // pitch angle compensate
 
 			y_roll = -2*(q2*q4 - q1*q3)	;
-            q_roll = asinf(y_roll)* -180.0f / M_PI;
-            y_roll = y_roll - y0_roll ;
-            if(y_roll < 0) y_roll = -y_roll ;
-            t_compensate *= (1 + (y_roll));       // roll angle compensate            
+			q_roll = asinf(y_roll)* -180.0f / M_PI;
+			y_roll = y_roll - y0_roll ;
+			if(y_roll < 0) y_roll = -y_roll ;
+			t_compensate *= (1 + (y_roll));       // roll angle compensate            
 
-            if(t_compensate < 0) t_compensate = -t_compensate ; // +value
- 
-            q_yaw   += gz/sampleFreq * 180.0f / M_PI ;
+			if(t_compensate < 0) t_compensate = -t_compensate ; // +value
+
+			q_yaw   += gz/sampleFreq * 180.0f / M_PI ;
 }
 
 
 
 
 
+
+float Smooth_filter(float alfa, float new_data, float prev_data)
+{
+  float output = prev_data + (alfa * (new_data - prev_data));
+  return output;
+}
 /* USER CODE END 4 */
 
 #ifdef USE_FULL_ASSERT
